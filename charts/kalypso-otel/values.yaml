@@ -1,0 +1,14 @@
+# cert-manager configuration
+cert-manager:
+  enabled: true
+  installCRDs: true
+
+# OpenTelemetry Operator configuration
+opentelemetry-operator:
+  enabled: true
+  manager:
+    collectorImage:
+      repository: otel/opentelemetry-collector-contrib
+  admissionWebhooks:
+    certManager:
+      enabled: true
