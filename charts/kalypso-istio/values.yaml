@@ -1,0 +1,22 @@
+# Istio base configuration
+base:
+  enabled: true
+
+# Istio control plane (istiod) configuration
+istiod:
+  enabled: true
+  pilot:
+    replicaCount: 1  # Development environment
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+
+# Istio ingress gateway configuration
+gateway:
+  enabled: true
+  replicaCount: 1  # Development environment
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
