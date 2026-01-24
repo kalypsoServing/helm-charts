@@ -1,0 +1,161 @@
+# Kalypso Pyroscope Helm Chart Values
+# S3 backend with OTel eBPF profiler
+
+# Disable chart-embedded MinIO (using external MinIO)
+minio:
+  enabled: false
+
+# Pyroscope server configuration
+pyroscope:
+  enabled: true
+  
+  # CLI args to force S3 backend
+  extraArgs:
+    storage.backend: s3
+
+  # Pyroscope config file with S3 settings
+  config: |
+    storage:
+      backend: s3
+      s3:
+        endpoint: minio.minio.svc.cluster.local:9000
+        bucket_name: pyroscope-data
+        access_key_id: rootuser
+        secret_access_key: rootpass123
+        insecure: true
+        signature_version: v4
+
+architecture:
+  deployUnifiedServices: false
+
+  # Microservices mode enabled
+  microservices:
+    enabled: true
+    clusterLabelSuffix: -micro-services
+
+    # v2 components (replicas=1 for local environment)
+    v2:
+      query-backend:
+        kind: Deployment
+        replicaCount: 1
+        resources:
+          limits:
+            memory: 512Mi
+          requests:
+            memory: 128Mi
+            cpu: 100m
+      query-frontend:
+        kind: Deployment
+        replicaCount: 1
+        resources:
+          limits:
+            memory: 512Mi
+          requests:
+            memory: 128Mi
+            cpu: 100m
+      distributor:
+        kind: Deployment
+        replicaCount: 1
+        resources:
+          limits:
+            memory: 512Mi
+          requests:
+            memory: 128Mi
+            cpu: 100m
+      segment-writer:
+        kind: StatefulSet
+        replicaCount: 1
+        terminationGracePeriodSeconds: 600
+        resources:
+          limits:
+            memory: 2Gi
+          requests:
+            memory: 512Mi
+            cpu: 500m
+      compaction-worker:
+        kind: StatefulSet
+        replicaCount: 1
+        terminationGracePeriodSeconds: 1200
+        persistence:
+          enabled: false
+        resources:
+          limits:
+            memory: 1Gi
+          requests:
+            memory: 256Mi
+            cpu: 500m
+      metastore:
+        kind: StatefulSet
+        replicaCount: 1
+        terminationGracePeriodSeconds: 1200
+        persistence:
+          enabled: false
+        resources:
+          limits:
+            memory: 1Gi
+          requests:
+            memory: 256Mi
+            cpu: 500m
+        extraArgs:
+          metastore.raft.bootstrap-expect-peers: 1
+          adaptive-placement.max-dataset-shards: 512
+          adaptive-placement.unit-size-bytes: 131072
+          metastore.index.cleanup-interval: 1m
+          metastore.snapshot-compact-on-restore: true
+      tenant-settings:
+        kind: Deployment
+        replicaCount: 1
+        resources:
+          limits:
+            memory: 256Mi
+          requests:
+            memory: 64Mi
+            cpu: 100m
+      ad-hoc-profiles:
+        kind: Deployment
+        replicaCount: 1
+        resources:
+          limits:
+            memory: 256Mi
+          requests:
+            memory: 64Mi
+            cpu: 100m
+      admin:
+        kind: Deployment
+        replicaCount: 1
+        resources:
+          limits:
+            memory: 256Mi
+          requests:
+            memory: 64Mi
+            cpu: 100m
+
+  storage:
+    # v1 storage layer disabled
+    v1: false
+    # v2 storage layer enabled
+    v2: true
+
+    migration:
+      # 100% traffic to v2
+      ingesterWeight: 0.0
+      segmentWriterWeight: 1.0
+
+      # v2 query backend enabled
+      queryBackend: true
+      queryBackendFrom: ""
+
+# Grafana Alloy - DISABLED (using OTel eBPF profiler instead)
+alloy:
+  enabled: false
+
+# OTel eBPF Profiler configuration
+ebpfProfiler:
+  enabled: true
+  image: "ebpf-profiler:latest"
+
+# OTel Collector configuration
+otelCollector:
+  enabled: true
+  image: "otel/opentelemetry-collector-contrib:0.129.1"
+  replicas: 1
