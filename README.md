@@ -117,6 +117,25 @@ All components communicate via Kubernetes DNS FQDN:
 - Loki: `loki-gateway.loki.svc.cluster.local:80`
 - Pyroscope: `pyroscope.pyroscope.svc.cluster.local:4040`
 
+## Chart Versions
+
+This repository uses the following Helm chart versions:
+
+| Chart | Helm Chart Version | Repository | Notes |
+|-------|-------------------|------------|-------|
+| cert-manager | 1.19.2 | https://charts.jetstack.io | Certificate management |
+| opentelemetry-operator | 0.102.0 | https://open-telemetry.github.io/opentelemetry-helm-charts | OTel Operator |
+| istio (base) | 1.28.3 | https://istio-release.storage.googleapis.com/charts | Istio base |
+| istio (istiod) | 1.28.3 | https://istio-release.storage.googleapis.com/charts | Istio control plane |
+| minio | 5.4.0 | https://charts.min.io/ | S3-compatible storage |
+| mimir-distributed | 6.1.0-weekly.373 | https://grafana.github.io/helm-charts | Metrics storage (weekly) |
+| tempo-distributed | 1.60.0 | https://grafana.github.io/helm-charts | Distributed tracing |
+| loki | 6.49.0 | https://grafana.github.io/helm-charts | Log aggregation |
+| grafana | 10.5.12 | https://grafana.github.io/helm-charts | Dashboards & visualization |
+| pyroscope | 1.18.0 | https://grafana.github.io/helm-charts | Continuous profiling |
+
+> **Note**: mimir-distributed uses a weekly build. For production, consider using a stable release version.
+
 ## Prerequisites
 
 - Kubernetes cluster (1.25+)
