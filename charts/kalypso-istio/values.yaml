@@ -1,10 +1,18 @@
 # Istio base configuration
 base:
   enabled: true
+  experimental:
+    # Set failurePolicy to Ignore (stable validation policy)
+    # When true, webhook failurePolicy remains Ignore instead of changing to Fail
+    stableValidationPolicy: true
 
 # Istio control plane (istiod) configuration
 istiod:
   enabled: true
+  experimental:
+    # Set failurePolicy to Ignore (stable validation policy)
+    # When true, webhook failurePolicy remains Ignore instead of changing to Fail
+    stableValidationPolicy: true
   pilot:
     replicaCount: 1
     resources:
