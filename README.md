@@ -2,6 +2,27 @@
 
 Multi-namespace Kubernetes observability stack with **LGTM (Loki, Grafana, Tempo, Mimir) + Pyroscope + Istio + MinIO**, deployed via ArgoCD ApplicationSet.
 
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              Grafana (grafana)                              │
+│                    Dashboards + Explore + Alerting                          │
+│         ┌──────────┬──────────┬──────────┬──────────────────┐               │
+│         │  Mimir   │  Tempo   │   Loki   │    Pyroscope     │               │
+│         │ metrics  │  traces  │   logs   │    profiles      │               │
+└─────────┴────┬─────┴────┬─────┴────┬─────┴────────┬─────────┘               │
+               │          │          │              │                          
+     ┌─────────┴──────────┴──────────┴──────────────┴─────────┐               
+     │                    MinIO (minio)                        │               
+     │              S3-compatible Object Storage               │               
+     │   [mimir-data] [tempo-traces] [loki-chunks] [pyroscope] │               
+     └─────────────────────────────────────────────────────────┘               
+               │                              │                                
+     ┌─────────┴──────────┐         ┌─────────┴──────────┐                    
+     │  Istio (istio)     │         │  OTel (otel)       │                    
+     │  Service Mesh      │         │  Operator + Certs  │                    
+     └────────────────────┘         └────────────────────┘                    
+```
+
 ## QuickStart
 
 ```bash
@@ -103,89 +124,85 @@ All components communicate via Kubernetes DNS FQDN:
 
 ## eBPF Profiler Setup
 
-The Pyroscope chart includes an OTel eBPF profiler for automatic continuous profiling. You must build the profiler image before deployment.
+The Pyroscope chart includes an OTel eBPF profiler for automatic continuous profiling of all applications without code changes.
 
-### Build eBPF Profiler Image
+### Default Configuration (Linux AMD64)
 
-```bash
-cd docker/ebpf-profiler
-
-# For AMD64
-docker build -t ebpf-profiler:latest .
-
-# For ARM64 (edit Dockerfile first)
-# Change line 17-18 to use: go1.22.10.linux-arm64.tar.gz
-docker build -t ebpf-profiler:latest .
-
-# Push to your registry
-docker tag ebpf-profiler:latest your-registry/ebpf-profiler:latest
-docker push your-registry/ebpf-profiler:latest
-```
-
-### Update Pyroscope Values
-
-Edit `charts/kalypso-pyroscope/values.yaml`:
+The eBPF profiler is pre-configured for **Linux AMD64** nodes using the official OpenTelemetry image:
 
 ```yaml
 ebpfProfiler:
   enabled: true
-  image: your-registry/ebpf-profiler:latest  # Update this
+  image: "otel/opentelemetry-ebpf-profiler-dev:202501021410"
+  nodeSelector:
+    kubernetes.io/os: linux
+    kubernetes.io/arch: amd64
 ```
 
-### Skip eBPF Profiler (Optional)
+No additional setup required for Linux AMD64 clusters.
 
-If you don't need eBPF profiling, disable it:
+### ARM64 Configuration
+
+For ARM64 nodes (e.g., AWS Graviton, Apple Silicon), update `charts/kalypso-pyroscope/values.yaml`:
+
+```yaml
+ebpfProfiler:
+  enabled: true
+  image: "otel/opentelemetry-ebpf-profiler-dev:202501021410"
+  nodeSelector:
+    kubernetes.io/os: linux
+    kubernetes.io/arch: arm64
+```
+
+### Disable eBPF Profiler
+
+If you don't need eBPF profiling:
 
 ```yaml
 ebpfProfiler:
   enabled: false
 ```
 
+### Build Custom Image (Optional)
+
+To build your own eBPF profiler image:
+
+```bash
+cd docker/ebpf-profiler
+docker build -t your-registry/ebpf-profiler:latest .
+docker push your-registry/ebpf-profiler:latest
+```
+
+Then update `charts/kalypso-pyroscope/values.yaml`:
+
+```yaml
+ebpfProfiler:
+  image: "your-registry/ebpf-profiler:latest"
+```
+
 ## Installation
 
 ### Option 1: ArgoCD ApplicationSet (Recommended)
 
-1. **Build eBPF Profiler Image**
-
-   ```bash
-   cd docker/ebpf-profiler
-   docker build -t ebpf-profiler:latest .
-   
-   # Push to your registry
-   docker tag ebpf-profiler:latest your-registry/ebpf-profiler:latest
-   docker push your-registry/ebpf-profiler:latest
-   ```
-
-   **ARM64 Support**: Edit `Dockerfile` line 17-18 to use `go1.22.10.linux-arm64.tar.gz`
-
-2. **Update Repository URL**
+1. **Update Repository URL**
 
    Edit `argocd/applicationset.yaml` line 52:
    ```yaml
    repoURL: https://github.com/YOUR_ORG/kalypso-infra-helm-chart.git
    ```
 
-3. **Update eBPF Profiler Image**
-
-   Edit `charts/kalypso-pyroscope/values.yaml`:
-   ```yaml
-   ebpfProfiler:
-     image: your-registry/ebpf-profiler:latest
-   ```
-
-4. **Deploy via ArgoCD**
+2. **Deploy via ArgoCD**
 
    ```bash
    kubectl apply -f argocd/project.yaml
    kubectl apply -f argocd/applicationset.yaml
    ```
 
-5. **Monitor Deployment**
+3. **Monitor Deployment**
 
    ```bash
    kubectl get applications -n argocd
-   argocd app list
-   argocd app sync kalypso-otel
+   watch kubectl get pods -A
    ```
 
 ### Option 2: Manual Helm Installation
@@ -282,23 +299,28 @@ kubectl port-forward -n grafana svc/kalypso-grafana 3000:80
 
 ## Troubleshooting
 
-### eBPF Profiler Issues on ARM64
+### eBPF Profiler Not Scheduling
 
-The eBPF profiler may have compatibility issues on ARM64. If you encounter problems:
+If eBPF profiler pods show `0/0` in DaemonSet:
 
-1. Check profiler logs:
+1. Check node architecture matches nodeSelector:
    ```bash
-   kubectl logs -n pyroscope -l app=otel-ebpf-profiler
+   kubectl get nodes --show-labels | grep arch
+   kubectl get ds -n pyroscope
    ```
 
-2. Disable eBPF profiler:
+2. For ARM64 clusters, update `charts/kalypso-pyroscope/values.yaml`:
    ```yaml
-   # charts/kalypso-pyroscope/values.yaml
    ebpfProfiler:
-     enabled: false
+     nodeSelector:
+       kubernetes.io/arch: arm64
    ```
 
-3. Use alternative profiling methods (application-level instrumentation)
+### eBPF Profiler Logs
+
+```bash
+kubectl logs -n pyroscope -l app.kubernetes.io/component=ebpf-profiler
+```
 
 ### Cert-Manager CRDs Not Installing
 
