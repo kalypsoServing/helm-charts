@@ -18,38 +18,39 @@ minio:
     enabled: true
     size: 10Gi
   
+  # Buckets to create after MinIO is ready
   buckets:
     - name: tempo-bucket
-      policy:
+      policy: none
       purge: false
     - name: loki-bucket
-      policy:
+      policy: none
       purge: false
     - name: mimir-bucket
-      policy:
+      policy: none
       purge: false
     - name: mimir-blocks
-      policy:
+      policy: none
       purge: false
     - name: mimir-alertmanager
-      policy:
+      policy: none
       purge: false
     - name: mimir-ruler
-      policy:
+      policy: none
       purge: false
     - name: pyroscope-data
-      policy:
+      policy: none
       purge: false
     - name: pyroscope-admin
-      policy:
+      policy: none
       purge: false
   
   service:
-    type: LoadBalancer
+    type: ClusterIP
     port: 9000
   
   consoleService:
-    type: LoadBalancer
+    type: ClusterIP
     port: 9001
 
 # Global configuration for credentials

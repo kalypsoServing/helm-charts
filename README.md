@@ -29,6 +29,8 @@ Multi-namespace Kubernetes observability stack with **LGTM (Loki, Grafana, Tempo
 git clone https://github.com/KalypsoServing/helm-charts
 cd helm-charts
 
+kind create cluster --config ./kind-config.yaml
+
 # Install ArgoCD (if not already installed)
 kubectl create namespace argocd
 kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
