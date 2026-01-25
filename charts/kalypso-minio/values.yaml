@@ -1,3 +1,5 @@
+fullnameOverride: kalypso-minio
+
 minio:
   enabled: true
   mode: standalone

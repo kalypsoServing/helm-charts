@@ -19,7 +19,7 @@ spec:
             namespace: istio-system
             path: charts/kalypso-istio
             wave: "2"
-          - name: minio
+          - name: kalypso-minio
             namespace: minio
             path: charts/kalypso-minio
             wave: "3"
