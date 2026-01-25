@@ -1,0 +1,97 @@
+# OpenTelemetry Collector Configuration
+# OpenTelemetry Operator를 사용하여 배포
+
+# Deployment mode: deployment, daemonset, statefulset
+mode: deployment
+
+# Replica 수
+replicas: 1
+
+# OpenTelemetry Collector 설정
+config:
+  # Receivers - 데이터 수신
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:4317
+        http:
+          endpoint: 0.0.0.0:4318
+
+  # Processors - 데이터 처리
+  processors:
+    batch: {}
+
+  # Exporters - 데이터 전송
+  exporters:
+    # Tempo로 트레이스 전송
+    otlp/tempo:
+      endpoint: tempo-distributed-gateway.tempo.svc.cluster.local:4317
+      tls:
+        insecure: true
+
+    # Mimir로 메트릭 전송
+    prometheusremotewrite/mimir:
+      endpoint: http://mimir-distributed-gateway.mimir.svc.cluster.local/api/v1/push
+      tls:
+        insecure: true
+
+  # Service pipelines - receivers, processors, exporters 연결
+  service:
+    pipelines:
+      # 트레이스 파이프라인
+      traces:
+        receivers:
+          - otlp
+        processors:
+          - batch
+        exporters:
+          - otlp/tempo
+
+      # 메트릭 파이프라인
+      metrics:
+        receivers:
+          - otlp
+        processors:
+          - batch
+        exporters:
+          - prometheusremotewrite/mimir
+
+    # Collector 자체의 텔레메트리 설정
+    telemetry:
+      metrics:
+        readers:
+          - pull:
+              exporter:
+                prometheus:
+                  host: 0.0.0.0
+                  port: 8888
+
+# 리소스 제한
+resources: {}
+  # limits:
+  #   cpu: 1000m
+  #   memory: 2Gi
+  # requests:
+  #   cpu: 200m
+  #   memory: 400Mi
+
+# IP family 정책
+ipFamilyPolicy: SingleStack
+
+# 관리 상태
+managementState: managed
+
+# 업그레이드 전략
+upgradeStrategy: automatic
+
+# Target Allocator 설정 (Prometheus 스크래핑용)
+targetAllocator:
+  enabled: false
+  allocationStrategy: consistent-hashing
+  collectorNotReadyGracePeriod: 30s
+  collectorTargetReloadInterval: 30s
+  filterStrategy: relabel-config
+  prometheusCR:
+    scrapeInterval: 30s
+  resources: {}

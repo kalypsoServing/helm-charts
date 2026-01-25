@@ -1,0 +1,12 @@
+# alloy  default values.yaml
+# https://raw.githubusercontent.com/grafana/alloy/main/operations/helm/charts/alloy/values.yaml
+
+
+# alloy:
+#   configMap:
+#     content: |-
+#       // Write your Alloy config here:
+#       logging {
+#         level = "info"
+#         format = "logfmt"
+#       }

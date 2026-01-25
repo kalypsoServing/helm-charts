@@ -1,0 +1,235 @@
+# 1. 차트에 내장된 MinIO 설치를 비활성화 (외부 MinIO 사용)
+minio:
+  enabled: false
+
+# Pyroscope 서버 설정
+pyroscope:
+  # CLI 인자를 통해 S3 백엔드 사용 강제 설정 (config 파일만으로는 부족할 수 있음)
+  extraArgs:
+    storage.backend: s3
+
+  # Pyroscope 설정 파일 (pyroscope.config)
+  # minio.enabled가 false이므로 수동으로 S3 설정을 주입해야 함
+  config: |
+    storage:
+      backend: s3
+      s3:
+        endpoint: minio.minio.svc.cluster.local:9000
+        bucket_name: pyroscope-data
+        access_key_id: rootuser
+        secret_access_key: rootpass123
+        insecure: true
+        signature_version: v4
+
+architecture:
+  deployUnifiedServices: false
+
+  # Microservices 모드 활성화
+  microservices:
+    enabled: true
+    clusterLabelSuffix: -micro-services
+
+    # v2 컴포넌트 설정 (replica를 1로 줄여서 로컬 환경에 최적화)
+    v2:
+      query-backend:
+        kind: Deployment
+        replicaCount: 1
+        resources:
+          limits:
+            memory: 512Mi
+          requests:
+            memory: 128Mi
+            cpu: 100m
+      query-frontend:
+        kind: Deployment
+        replicaCount: 1
+        resources:
+          limits:
+            memory: 512Mi
+          requests:
+            memory: 128Mi
+            cpu: 100m
+      distributor:
+        kind: Deployment
+        replicaCount: 1
+        resources:
+          limits:
+            memory: 512Mi
+          requests:
+            memory: 128Mi
+            cpu: 100m
+      segment-writer:
+        kind: StatefulSet
+        replicaCount: 1
+        terminationGracePeriodSeconds: 600
+        resources:
+          limits:
+            memory: 2Gi
+          requests:
+            memory: 512Mi
+            cpu: 500m
+      compaction-worker:
+        kind: StatefulSet
+        replicaCount: 1
+        terminationGracePeriodSeconds: 1200
+        persistence:
+          enabled: false
+        resources:
+          limits:
+            memory: 1Gi
+          requests:
+            memory: 256Mi
+            cpu: 500m
+      metastore:
+        kind: StatefulSet
+        replicaCount: 1
+        terminationGracePeriodSeconds: 1200
+        persistence:
+          enabled: false
+        resources:
+          limits:
+            memory: 1Gi
+          requests:
+            memory: 256Mi
+            cpu: 500m
+        extraArgs:
+          metastore.raft.bootstrap-expect-peers: 1
+          adaptive-placement.max-dataset-shards: 512
+          adaptive-placement.unit-size-bytes: 131072
+          metastore.index.cleanup-interval: 1m
+          metastore.snapshot-compact-on-restore: true
+      tenant-settings:
+        kind: Deployment
+        replicaCount: 1
+        resources:
+          limits:
+            memory: 256Mi
+          requests:
+            memory: 64Mi
+            cpu: 100m
+      ad-hoc-profiles:
+        kind: Deployment
+        replicaCount: 1
+        resources:
+          limits:
+            memory: 256Mi
+          requests:
+            memory: 64Mi
+            cpu: 100m
+      admin:
+        kind: Deployment
+        replicaCount: 1
+        resources:
+          limits:
+            memory: 256Mi
+          requests:
+            memory: 64Mi
+            cpu: 100m
+
+  storage:
+    # -- (bool) Enable v1 storage layer.
+    v1: false
+    # -- (bool) Enable v2 storage layer.
+    v2: true
+
+    migration:
+      # -- (float) v1과 v2를 동시 실행 (migration 모드)
+      # v1으로 0%, v2로 100% 트래픽 분산
+      ingesterWeight: 0.0
+      segmentWriterWeight: 1.0
+
+      # -- v2 쿼리 백엔드 활성화 (빈 문자열 = 모든 쿼리에서 v2 사용)
+      queryBackend: true
+      queryBackendFrom: ""
+
+# Grafana Alloy - Annotation 기반 프로파일링 및 Push Receiver 설정
+# Pod에 annotation을 추가하면 자동으로 pprof 엔드포인트 스크래핑
+# Deployment로 배포하여 stateless 수집기로 동작 (S3 backend 사용)
+alloy:
+  enabled: true
+  controller:
+    type: "deployment"
+    replicas: 2  # 고가용성을 위해 2개 replica 실행
+  
+  # Alloy 파이프라인 설정: HTTP Push를 받아 Pyroscope로 전송
+  # alloy:
+    # configMap:
+    #   create: true
+    #   content: |
+    #     logging {
+    #       level  = "info"
+    #       format = "logfmt"
+    #     }
+
+    #     livedebugging {
+    #       enabled = true
+    #     }
+
+    #     pyroscope.write "default" {
+    #       endpoint {
+    #         url = "http://pyroscope.pyroscope.svc.cluster.local:4040"
+    #       }
+    #     }
+
+    #     pyroscope.receive_http "default" {
+    #       http {
+    #         listen_address = "0.0.0.0"
+    #         listen_port = 9900
+    #       }
+    #       forward_to = [pyroscope.write.default.receiver]
+    #     }
+    # extraPorts:
+    #   - name: pyroscope-http
+    #     port: 9900
+    #     targetPort: 9900
+    #     protocol: TCP
+
+# 3. (선택사항) 배포 전략 설정
+# 단일 바이너리(monolith) 모드로 실행하여 구성을 단순화합니다.
+# 규모가 커지면 microservices 모드로 변경을 고려하세요.
+#target: all
+
+
+
+
+# ============================================================================
+# Pyroscope Storage v2 Migration 모드
+# ============================================================================
+#
+# 현재 설정: v1과 v2를 50:50으로 동시 실행 (hybrid 모드)
+# - v1: ingester (기존 storage)
+# - v2: segment-writer (새로운 distributed architecture)
+#
+# MinIO 버킷:
+# - pyroscope-data: 프로파일 데이터 저장
+# - pyroscope-admin: 메타데이터 저장 (v2 전용)
+#
+# v2로 완전 전환하려면:
+# - ingesterWeight: 0.0 으로 변경
+# - segmentWriterWeight: 1.0 으로 유지
+# - v1: false 로 변경
+# ============================================================================
+
+# ============================================================================
+# Pyroscope 프로파일링 사용 방법
+# ============================================================================
+#
+# 1. 애플리케이션이 pprof 엔드포인트를 노출해야 함 (예: Go의 net/http/pprof)
+#
+# 2. Deployment/Pod의 spec.template.metadata.annotations에 추가:
+#
+#    annotations:
+#      # CPU 프로파일링
+#      profiles.grafana.com/cpu.scrape: "true"
+#      profiles.grafana.com/cpu.port: "8080"
+#
+#      # 메모리 프로파일링
+#      profiles.grafana.com/memory.scrape: "true"
+#      profiles.grafana.com/memory.port: "8080"
+#
+#      # Goroutine 프로파일링 (Go)
+#      profiles.grafana.com/goroutine.scrape: "true"
+#      profiles.grafana.com/goroutine.port: "8080"
+#
+# 3. Grafana Explore 또는 http://localhost:4040 에서 확인
+# ============================================================================

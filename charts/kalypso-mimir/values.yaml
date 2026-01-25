@@ -23,14 +23,14 @@ mimir-distributed:
       blocks_storage:
         backend: s3
         s3:
-          endpoint: minio.minio.svc.cluster.local:9000
+          endpoint: kalypso-minio.minio.svc.cluster.local:9000
           bucket_name: mimir-blocks
           insecure: true
       
       alertmanager_storage:
         backend: s3
         s3:
-          endpoint: minio.minio.svc.cluster.local:9000
+          endpoint: kalypso-minio.minio.svc.cluster.local:9000
           bucket_name: mimir-alertmanager
           insecure: true
           access_key_id: "rootuser"
@@ -39,7 +39,7 @@ mimir-distributed:
       ruler_storage:
         backend: s3
         s3:
-          endpoint: minio.minio.svc.cluster.local:9000
+          endpoint: kalypso-minio.minio.svc.cluster.local:9000
           bucket_name: mimir-ruler
           insecure: true
           access_key_id: "rootuser"

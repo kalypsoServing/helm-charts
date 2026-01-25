@@ -1,0 +1,54 @@
+
+
+#existingSecret: minio-secret
+
+mode: standalone
+replicas: 1
+resources:
+  requests:
+    memory: 512Mi
+    cpu: 250m
+# 드라이브 수를 줄입니다.
+drivesPerNode: 1
+
+rootUser: rootuser
+rootPassword: rootpass123
+
+persistence:
+  enabled: true
+  size: 10Gi
+
+buckets:
+  - name: tempo-bucket
+    policy:
+    purge: false
+  - name: loki-bucket
+    policy:
+    purge: false
+  - name: mimir-bucket
+    policy:
+    purge: false
+  - name: pyroscope-data
+    policy:
+    purge: false
+  - name: pyroscope-admin
+    policy:
+    purge: false
+  - name: mimir-blocks
+    policy:
+    purge: false
+  - name: mimir-alertmanager
+    policy:
+    purge: false
+  - name: mimir-ruler
+    policy:
+    purge: false
+
+
+service:
+  type: LoadBalancer
+  port: 9000
+
+consoleService:
+  type: LoadBalancer
+  port: 9001  # 브라우저 접속용 포트

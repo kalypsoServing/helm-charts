@@ -149,13 +149,17 @@ architecture:
 alloy:
   enabled: false
 
+# Grafana Agent - DISABLED (deprecated, using OTel eBPF profiler instead)
+agent:
+  enabled: false
+
 # OTel eBPF Profiler configuration
 ebpfProfiler:
-  enabled: true
+  enabled: false
   image: "ebpf-profiler:latest"
 
 # OTel Collector configuration
 otelCollector:
-  enabled: true
+  enabled: false
   image: "otel/opentelemetry-collector-contrib:0.129.1"
   replicas: 1

@@ -1,0 +1,51 @@
+service:
+  type: LoadBalancer
+  port: 80
+
+# 데이터 소스 자동 설정
+datasources:
+  datasources.yaml:
+    apiVersion: 1
+    datasources:
+    # Mimir (Prometheus 호환 메트릭)
+    - name: Mimir
+      type: prometheus
+      url: http://mimir-distributed-gateway.mimir.svc:80/prometheus
+      access: proxy
+      isDefault: true
+      editable: true
+      jsonData:
+        httpMethod: POST
+        prometheusType: Mimir
+        prometheusVersion: 2.4.0
+
+    # Tempo (분산 추적)
+    - name: Tempo
+      type: tempo
+      url: http://tempo-distributed-query-frontend.tempo.svc.cluster.local:3100
+      access: proxy
+      editable: true
+      jsonData:
+        httpMethod: GET
+        tracesToLogs:
+          datasourceUid: Loki
+
+    # Loki (로그 집계)
+    - name: Loki
+      type: loki
+      url: http://loki-gateway.loki.svc.cluster.local
+      access: proxy
+      editable: true
+      jsonData:
+        derivedFields:
+          - datasourceUid: Tempo
+            matcherRegex: "traceID=(\\w+)"
+            name: TraceID
+            url: "$${__value.raw}"
+
+    # Pyroscope (지속적 프로파일링)
+    - name: Pyroscope
+      type: grafana-pyroscope-datasource
+      url: http://pyroscope.pyroscope.svc.cluster.local:4040
+      access: proxy
+      editable: true

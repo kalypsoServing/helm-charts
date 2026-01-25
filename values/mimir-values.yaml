@@ -1,0 +1,275 @@
+# mimir-kafka-external-s3.yaml
+
+# 1. 내장 Minio 비활성화 (외부 Minio 사용)
+minio:
+  enabled: false 
+
+# 2. Kafka 활성화 (Ingestion Buffer)
+kafka:
+  enabled: true
+  replicaCount: 1
+  persistence:
+    enabled: false
+  resources:
+    requests: {cpu: 200m, memory: 512Mi}
+    limits: {memory: 1Gi}
+  zookeeper:
+    replicaCount: 1
+    resources:
+      requests: {cpu: 100m, memory: 256Mi}
+
+# 3. Mimir 핵심 설정
+mimir:
+  structuredConfig:
+    # (A) 공통 스토리지 설정 (External Minio 연결)
+    common:
+      storage:
+        backend: s3
+        s3:
+          # 사용자님이 제공하신 외부 Minio 주소
+          endpoint: minio.minio.svc.cluster.local:9000
+          # [보정됨] ID와 Secret 순서를 통상적인 설정으로 맞췄습니다.
+          access_key_id: "rootuser"
+          secret_access_key: "rootpass123"
+          # [필수] HTTPS가 아닌 HTTP로 통신하기 위해 꼭 필요합니다.
+          insecure: true 
+
+    # (B) Alertmanager 스토리지 (External S3)
+    # Weekly 빌드 호환성을 위해 최상위 레벨에 작성
+    alertmanager_storage:
+      backend: s3
+      s3:
+        endpoint: minio.minio.svc.cluster.local:9000
+        access_key_id: "rootuser"
+        secret_access_key: "rootpass123"
+        bucket_name: mimir-ruler # 사용자님이 지정한 버킷 이름
+        insecure: true
+
+    # (C) 블록 스토리지 (TSDB)
+    blocks_storage:
+      s3:
+        endpoint: minio.minio.svc.cluster.local:9000
+        bucket_name: mimir-bucket
+        insecure: true
+      backend: s3
+
+    # (D) Kafka를 통한 데이터 수집 (Ingest Storage)
+    ingest_storage:
+      enabled: true
+      kafka:
+        address: mimir-distributed-kafka.mimir.svc:9092
+        topic: mimir-ingest
+        auto_create_topic_enabled: true
+        auto_create_topic_default_partitions: 100
+
+    ruler_storage:
+      backend: s3
+      s3:
+        endpoint: minio.minio.svc.cluster.local:9000
+        bucket_name: mimir-ruler
+        insecure: true
+        access_key_id: "rootuser"
+        secret_access_key: "rootpass123"
+    
+    # (E) 링 구성 (리소스 절약용 memberlist)
+    distributor:
+      ring:
+        kvstore: {store: memberlist}
+    ingester:
+      ring:
+        kvstore: {store: memberlist}
+    alertmanager:
+      sharding_ring:
+        kvstore: {store: memberlist}
+    compactor:
+      sharding_ring:
+        kvstore: {store: memberlist}
+    store_gateway:
+      sharding_ring:
+        kvstore: {store: memberlist}
+
+# 4. 리소스 최적화 (Kafka 사용 고려)
+ingester:
+  replicas: 1
+  zoneAwareReplication: {enabled: false}
+  resources: {requests: {cpu: 50m, memory: 256Mi}}
+
+distributor:
+  replicas: 1
+  resources: {requests: {cpu: 20m, memory: 64Mi}}
+
+querier:
+  replicas: 1
+  resources: {requests: {cpu: 20m, memory: 64Mi}}
+
+query_frontend:
+  replicas: 1
+  resources:
+    requests: {cpu: 10m, memory: 32Mi}
+
+store_gateway:
+  replicas: 1
+  zoneAwareReplication: {enabled: false}
+  resources: {requests: {cpu: 10m, memory: 64Mi}}
+
+alertmanager:
+  replicas: 1
+  resources: {requests: {cpu: 10m, memory: 32Mi}}
+  zoneAwareReplication: {enabled: false}
+  
+
+
+ruler_query_scheduler:
+  replicas: 1
+  resources:
+    requests: {cpu: 10m, memory: 32Mi}
+  statefulSet:
+    enabled: true
+  service:
+    type: ClusterIP
+  zoneAwareReplication:
+    enabled: false
+
+compactor:
+  enabled: true
+  replicas: 1
+
+# 5. 불필요한 모듈 OFF
+smoke_test: {enabled: false}
+continuous_test: {enabled: false}
+rollout_operator: {enabled: false}
+
+
+# minio:
+#   enabled: false
+# kafka:
+#   # -- Enable Kafka for ingest-storage architecture
+#   enabled: false
+
+# mimir:
+#   structuredConfig:
+#     common:
+#       storage:
+#         backend: s3
+#         s3:
+#           bucket_name: mimir-bucket
+#           endpoint: minio.minio.svc.cluster.local:9000
+#           secret_access_key: "rootuser"
+#           access_key_id: "rootpass123"
+#           http:
+#             insecure_skip_verify: true
+        
+#     blocks_storage:
+#       backend: s3
+#       s3:
+#         bucket_name: mimir-bucket
+#         endpoint: minio.minio.svc.cluster.local:9000
+#         secret_access_key: "rootuser"
+#         access_key_id: "rootpass123"
+#         insecure: true
+#       # 1. 인제스터 및 알럿매니저의 링 구성을 memberlist(Gossip)로 고정
+
+#     alertmanager_storage:
+#       backend: s3
+#       s3:
+#         endpoint: mimir-distributed-minio.mimir.svc:9000
+#         access_key_id: mimir
+#         secret_access_key: supersecret
+#         bucket_name: mimir-ruler
+#         insecure: true
+
+#     # (D) 링(Ring) 설정: 무거운 Etcd/Consul 대신 가십 프로토콜(memberlist) 사용
+#     alertmanager:
+#       sharding_ring:
+#         kvstore:
+#           store: memberlist
+#     distributor:
+#       ring:
+#         kvstore:
+#           store: memberlist
+#     ingester:
+#       ring:
+#         kvstore:
+#           store: memberlist
+#     compactor:
+#       sharding_ring:
+#         kvstore:
+#           store: memberlist
+#     store_gateway:
+#       sharding_ring:
+#         kvstore:
+#           store: memberlist
+#     ruler:
+#       alertmanager_url: dns+http://mimir-distributed-alertmanager-headless.mimir.svc:8080/alertmanager
+
+
+
+# # 3. 컴포넌트 스케일 다운 (Resource Optimization)
+# # 모든 리플리카를 1로 줄이고, 리소스 요청량을 최소화합니다.
+
+# alertmanager:
+#   replicas: 1
+#   resources:
+#     requests: {cpu: 10m, memory: 32Mi}
+
+# compactor:
+#   replicas: 1
+#   resources:
+#     requests: {cpu: 10m, memory: 64Mi}
+
+# distributor:
+#   replicas: 1
+#   resources:
+#     requests: {cpu: 10m, memory: 64Mi}
+
+# ingester:
+#   replicas: 1
+#   zoneAwareReplication: {enabled: false}
+#   resources:
+#     requests: {cpu: 50m, memory: 256Mi} # Ingester는 메모리가 좀 필요함
+
+# querier:
+#   replicas: 1
+#   resources:
+#     requests: {cpu: 20m, memory: 64Mi}
+
+# query_frontend:
+#   replicas: 1
+#   resources:
+#     requests: {cpu: 10m, memory: 32Mi}
+
+# query_scheduler:
+#   replicas: 1
+#   resources:
+#     requests: {cpu: 10m, memory: 32Mi}
+
+# store_gateway:
+#   replicas: 1
+#   zoneAwareReplication: {enabled: false}
+#   resources:
+#     requests: {cpu: 10m, memory: 64Mi}
+
+# ruler:
+#   replicas: 1
+#   resources:
+#     requests: {cpu: 10m, memory: 64Mi}
+
+# overrides_exporter:
+#   replicas: 1
+#   resources:
+#     requests: {cpu: 5m, memory: 16Mi}
+
+# # 로컬 테스트용이므로 Ingress 대신 Port-Forwarding 사용 권장
+# gateway:
+#   enabled: true
+#   replicas: 1
+#   service:
+#     type: ClusterIP
+
+# # 불필요한 기능 비활성화
+# rollout_operator:
+#   enabled: false # 로컬에서 롤아웃 오퍼레이터는 과스펙
+# smoke_test:
+#   enabled: false
+# continuous_test:
+#   enabled: false
