@@ -1,19 +1,26 @@
-# Kalypso Pyroscope Helm Chart Values
-# S3 backend with OTel eBPF profiler
+# Pyroscope Base Configuration
+# Microservices v2 deployment with S3 storage
 
-# Disable chart-embedded MinIO (using external MinIO)
 minio:
   enabled: false
 
-# Pyroscope server configuration
 pyroscope:
-  enabled: true
-  
-  # CLI args to force S3 backend
+  agent:
+    enabled: false
+
+  alloy:
+    enabled: false
+
+  podAnnotations:
+    profiles.grafana.com/cpu.scrape: "true"
+    profiles.grafana.com/cpu.port: "4040"
+    profiles.grafana.com/cpu.port_name: http2
+    profiles.grafana.com/memory.scrape: "false"
+    profiles.grafana.com/goroutine.scrape: "false"
+
   extraArgs:
     storage.backend: s3
 
-  # Pyroscope config file with S3 settings
   config: |
     storage:
       backend: s3
@@ -25,141 +32,124 @@ pyroscope:
         insecure: true
         signature_version: v4
 
-architecture:
-  deployUnifiedServices: false
+  architecture:
+    deployUnifiedServices: false
 
-  # Microservices mode enabled
-  microservices:
-    enabled: true
-    clusterLabelSuffix: -micro-services
+    microservices:
+      enabled: true
 
-    # v2 components (replicas=1 for local environment)
-    v2:
-      query-backend:
-        kind: Deployment
-        replicaCount: 1
-        resources:
-          limits:
-            memory: 512Mi
-          requests:
-            memory: 128Mi
-            cpu: 100m
-      query-frontend:
-        kind: Deployment
-        replicaCount: 1
-        resources:
-          limits:
-            memory: 512Mi
-          requests:
-            memory: 128Mi
-            cpu: 100m
-      distributor:
-        kind: Deployment
-        replicaCount: 1
-        resources:
-          limits:
-            memory: 512Mi
-          requests:
-            memory: 128Mi
-            cpu: 100m
-      segment-writer:
-        kind: StatefulSet
-        replicaCount: 1
-        terminationGracePeriodSeconds: 600
-        resources:
-          limits:
-            memory: 2Gi
-          requests:
-            memory: 512Mi
-            cpu: 500m
-      compaction-worker:
-        kind: StatefulSet
-        replicaCount: 1
-        terminationGracePeriodSeconds: 1200
-        persistence:
-          enabled: false
-        resources:
-          limits:
-            memory: 1Gi
-          requests:
-            memory: 256Mi
-            cpu: 500m
-      metastore:
-        kind: StatefulSet
-        replicaCount: 1
-        terminationGracePeriodSeconds: 1200
-        persistence:
-          enabled: false
-        resources:
-          limits:
-            memory: 1Gi
-          requests:
-            memory: 256Mi
-            cpu: 500m
-        extraArgs:
-          metastore.raft.bootstrap-expect-peers: 1
-          adaptive-placement.max-dataset-shards: 512
-          adaptive-placement.unit-size-bytes: 131072
-          metastore.index.cleanup-interval: 1m
-          metastore.snapshot-compact-on-restore: true
-      tenant-settings:
-        kind: Deployment
-        replicaCount: 1
-        resources:
-          limits:
-            memory: 256Mi
-          requests:
-            memory: 64Mi
-            cpu: 100m
-      ad-hoc-profiles:
-        kind: Deployment
-        replicaCount: 1
-        resources:
-          limits:
-            memory: 256Mi
-          requests:
-            memory: 64Mi
-            cpu: 100m
-      admin:
-        kind: Deployment
-        replicaCount: 1
-        resources:
-          limits:
-            memory: 256Mi
-          requests:
-            memory: 64Mi
-            cpu: 100m
+      v2:
+        query-backend:
+          replicaCount: 1
+          resources:
+            limits:
+              memory: 512Mi
+            requests:
+              memory: 128Mi
+              cpu: 100m
 
-  storage:
-    # v1 storage layer disabled
-    v1: false
-    # v2 storage layer enabled
-    v2: true
+        query-frontend:
+          replicaCount: 1
+          resources:
+            limits:
+              memory: 512Mi
+            requests:
+              memory: 128Mi
+              cpu: 100m
 
-    migration:
-      # 100% traffic to v2
-      ingesterWeight: 0.0
-      segmentWriterWeight: 1.0
+        distributor:
+          replicaCount: 1
+          resources:
+            limits:
+              memory: 512Mi
+            requests:
+              memory: 128Mi
+              cpu: 100m
 
-      # v2 query backend enabled
-      queryBackend: true
-      queryBackendFrom: ""
+        segment-writer:
+          replicaCount: 1
+          terminationGracePeriodSeconds: 600
+          persistence:
+            enabled: false
+          resources:
+            limits:
+              memory: 2Gi
+            requests:
+              memory: 512Mi
+              cpu: 500m
 
-# Grafana Alloy - DISABLED (using OTel eBPF profiler instead)
-alloy:
-  enabled: false
+        compaction-worker:
+          replicaCount: 1
+          terminationGracePeriodSeconds: 1200
+          resources:
+            limits:
+              memory: 1Gi
+            requests:
+              memory: 256Mi
+              cpu: 500m
 
-# Grafana Agent - DISABLED (deprecated, using OTel eBPF profiler instead)
-agent:
-  enabled: false
+        metastore:
+          replicaCount: 1
+          terminationGracePeriodSeconds: 1200
+          resources:
+            limits:
+              memory: 1Gi
+            requests:
+              memory: 256Mi
+              cpu: 500m
+          extraArgs:
+            metastore.raft.bootstrap-expect-peers: 1
+            adaptive-placement.max-dataset-shards: 512
+            adaptive-placement.unit-size-bytes: 131072
+            metastore.index.cleanup-interval: 1m
+            metastore.snapshot-compact-on-restore: true
 
-# OTel eBPF Profiler configuration
+        tenant-settings:
+          replicaCount: 1
+          resources:
+            limits:
+              memory: 256Mi
+            requests:
+              memory: 64Mi
+              cpu: 100m
+
+        ad-hoc-profiles:
+          replicaCount: 1
+          resources:
+            limits:
+              memory: 256Mi
+            requests:
+              memory: 64Mi
+              cpu: 100m
+
+        admin:
+          replicaCount: 1
+          resources:
+            limits:
+              memory: 256Mi
+            requests:
+              memory: 64Mi
+              cpu: 100m
+
+    storage:
+      v1: false
+      v2: true
+
+      migration:
+        ingesterWeight: 0.0
+        segmentWriterWeight: 1.0
+
+  serviceMonitor:
+    enabled: false
+
+  serviceAccount:
+    name: pyroscope
+
 ebpfProfiler:
-  enabled: false
+  enabled: true
   image: "ebpf-profiler:latest"
+  # OTel Collector endpoint for sending profiles
+  collectorEndpoint: "kalypso-otel-collector.otel-system.svc.cluster.local:4317"
 
-# OTel Collector configuration
 otelCollector:
   enabled: false
-  image: "otel/opentelemetry-collector-contrib:0.129.1"
-  replicas: 1

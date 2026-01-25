@@ -7,6 +7,10 @@ spec:
   generators:
     - list:
         elements:
+          - name: cert-manager
+            namespace: cert-manager
+            path: charts/cert-manager
+            wave: "0"
           - name: otel
             namespace: otel-system
             path: charts/kalypso-otel
@@ -49,7 +53,7 @@ spec:
       project: kalypso-infra
       
       source:
-        repoURL: https://github.com/YOUR_ORG/kalypso-infra-helm-chart.git
+        repoURL: https://github.com/KalypsoServing/helm-charts.git
         targetRevision: HEAD
         path: '{{path}}'
         helm:

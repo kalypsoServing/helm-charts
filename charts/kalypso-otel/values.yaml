@@ -1,9 +1,3 @@
-# cert-manager configuration
-cert-manager:
-  enabled: true
-  installCRDs: true
-
-# OpenTelemetry Operator configuration
 opentelemetry-operator:
   enabled: true
   manager:
@@ -12,3 +6,22 @@ opentelemetry-operator:
   admissionWebhooks:
     certManager:
       enabled: true
+
+clusterName: kalypso
+
+otelCollector:
+  enabled: true
+  image: otel/opentelemetry-collector-contrib:0.96.0
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+endpoints:
+  mimir: http://kalypso-mimir-nginx.mimir.svc.cluster.local:80/api/v1/otlp
+  tempo: kalypso-tempo-distributor.tempo.svc.cluster.local:4317
+  loki: http://kalypso-loki-gateway.loki.svc.cluster.local:80/loki/api/v1/push
+  pyroscope: http://kalypso-pyroscope.pyroscope.svc.cluster.local:4040

@@ -1,83 +1,88 @@
 # Kalypso Infrastructure Helm Charts
 
-Multi-namespace Kubernetes observability stack with LGTM (Loki, Grafana, Tempo, Mimir) + Pyroscope + Istio + MinIO, deployed via ArgoCD ApplicationSet.
+Multi-namespace Kubernetes observability stack with **LGTM (Loki, Grafana, Tempo, Mimir) + Pyroscope + Istio + MinIO**, deployed via ArgoCD ApplicationSet.
 
-## Quickstart
-
-### Deploy with ArgoCD (Recommended)
+## QuickStart
 
 ```bash
-# 1. Ensure ArgoCD is installed
+git clone https://github.com/KalypsoServing/helm-charts
+cd helm-charts
+
+# Install ArgoCD (if not already installed)
 kubectl create namespace argocd
 kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
-
-# 2. Wait for ArgoCD to be ready
 kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=argocd-server -n argocd --timeout=300s
 
-# 3. Update repository URL in applicationset.yaml
-# Edit argocd/applicationset.yaml line 52:
-# repoURL: https://github.com/YOUR_ORG/kalypso-infra-helm-chart.git
-
-# 4. Apply ArgoCD resources
+# Deploy entire stack
 kubectl apply -f argocd/project.yaml
 kubectl apply -f argocd/applicationset.yaml
 
-# 5. Monitor deployment
-kubectl get applications -n argocd
+# Monitor deployment
 watch kubectl get pods -A
-
-# 6. Access Grafana
-kubectl port-forward -n grafana svc/kalypso-grafana 3000:80
-# Open http://localhost:3000
-# Username: admin
-# Password: kubectl get secret -n grafana kalypso-grafana -o jsonpath="{.data.admin-password}" | base64 -d
 ```
 
-### Manual Helm Installation (Testing)
+ArgoCD will automatically deploy in order:
+1. **cert-manager** → Certificate management
+2. **kalypso-otel** → OpenTelemetry Operator  
+3. **kalypso-istio** → Istio service mesh
+4. **kalypso-minio** → S3-compatible storage
+5. **kalypso-mimir/tempo/loki** → Metrics, traces, logs
+6. **kalypso-pyroscope** → Continuous profiling
+7. **kalypso-grafana** → Dashboards
+
+### Access Grafana
 
 ```bash
-# Install in dependency order
+kubectl port-forward -n grafana svc/kalypso-grafana 3000:80
+# URL: http://localhost:3000
+# User: admin
+# Pass: kubectl get secret -n grafana kalypso-grafana -o jsonpath="{.data.admin-password}" | base64 -d
+```
+
+### Manual Installation (Alternative)
+
+```bash
+helm install cert-manager charts/cert-manager -n cert-manager --create-namespace --wait
 helm install kalypso-otel charts/kalypso-otel -n otel-system --create-namespace
 helm install kalypso-istio charts/kalypso-istio -n istio-system --create-namespace
 helm install kalypso-minio charts/kalypso-minio -n minio --create-namespace
+helm install kalypso-mimir charts/kalypso-mimir -n mimir --create-namespace
 helm install kalypso-tempo charts/kalypso-tempo -n tempo --create-namespace
 helm install kalypso-loki charts/kalypso-loki -n loki --create-namespace
-helm install kalypso-mimir charts/kalypso-mimir -n mimir --create-namespace
 helm install kalypso-pyroscope charts/kalypso-pyroscope -n pyroscope --create-namespace
 helm install kalypso-grafana charts/kalypso-grafana -n grafana --create-namespace
 ```
 
-**Note**: For OTel eBPF profiler, you must build and push the image first (see [eBPF Profiler Setup](#ebpf-profiler-setup) below).
-
 ## Architecture
 
-This repository contains 8 independent Helm charts, each deployed to its own namespace:
+| Chart | Namespace | Components |
+|-------|-----------|------------|
+| cert-manager | cert-manager | cert-manager (CRDs for certificates) |
+| kalypso-otel | otel-system | OpenTelemetry Operator |
+| kalypso-istio | istio-system | Istio base, istiod |
+| kalypso-minio | minio | MinIO standalone |
+| kalypso-mimir | mimir | Mimir distributed (metrics) |
+| kalypso-tempo | tempo | Tempo distributed (traces) |
+| kalypso-loki | loki | Loki (logs) |
+| kalypso-pyroscope | pyroscope | Pyroscope + eBPF profiler |
+| kalypso-grafana | grafana | Grafana dashboards |
 
-| Chart | Namespace | Components | Purpose |
-|-------|-----------|------------|---------|
-| kalypso-otel | otel-system | cert-manager, OpenTelemetry Operator | Certificate management and OTel infrastructure |
-| kalypso-istio | istio-system | Istio base, istiod, gateway | Service mesh |
-| kalypso-minio | minio | MinIO standalone | S3-compatible object storage |
-| kalypso-mimir | mimir | Mimir distributed | Metrics storage (Prometheus-compatible) |
-| kalypso-tempo | tempo | Tempo distributed | Distributed tracing |
-| kalypso-loki | loki | Loki | Log aggregation |
-| kalypso-pyroscope | pyroscope | Pyroscope + OTel eBPF Profiler | Continuous profiling |
-| kalypso-grafana | grafana | Grafana | Dashboards and visualization |
-
-### Deployment Order (ArgoCD Sync Waves)
+### ArgoCD Sync Waves
 
 ```
-Wave 1: otel (cert-manager must install first)
+Wave 0: cert-manager (CRDs must exist first)
    ↓
-Wave 2: istio
+Wave 1: kalypso-otel (needs cert-manager)
    ↓
-Wave 3: minio
+Wave 2: kalypso-istio
    ↓
-Wave 4: mimir, tempo, loki (parallel)
+Wave 3: kalypso-minio (storage for LGTM)
    ↓
-Wave 5: pyroscope
+Wave 4: kalypso-mimir, kalypso-tempo, kalypso-loki (parallel)
    ↓
-Wave 6: grafana
+Wave 5: kalypso-pyroscope
+   ↓
+Wave 6: kalypso-grafana
 ```
 
 ### Cross-Namespace Communication

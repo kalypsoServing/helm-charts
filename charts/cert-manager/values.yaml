@@ -1,0 +1,23 @@
+# cert-manager chart values
+# This chart is deployed first (ArgoCD sync wave 0) to provide CRDs for other charts
+
+cert-manager:
+  # Install CRDs - REQUIRED for Certificate resources to work
+  installCRDs: true
+  
+  # Prometheus metrics
+  prometheus:
+    enabled: false
+  
+  # Webhook configuration
+  webhook:
+    timeoutSeconds: 30
+  
+  # Resource limits for Kind cluster
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi

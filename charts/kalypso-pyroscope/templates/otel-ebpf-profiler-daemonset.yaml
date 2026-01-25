@@ -25,19 +25,20 @@ spec:
             - sh
             - -c
             - |
-              echo "Waiting for OTel Collector to be ready..."
-              until nc -z otel-collector 4317; do
-                echo "Waiting for otel-collector:4317..."
+              COLLECTOR_HOST=$(echo "{{ .Values.ebpfProfiler.collectorEndpoint }}" | cut -d: -f1)
+              COLLECTOR_PORT=$(echo "{{ .Values.ebpfProfiler.collectorEndpoint }}" | cut -d: -f2)
+              until nc -z $COLLECTOR_HOST $COLLECTOR_PORT; do
+                echo "Waiting for OTel Collector at $COLLECTOR_HOST:$COLLECTOR_PORT..."
                 sleep 2
               done
-              echo "OTel Collector is ready!"
       containers:
         - name: profiler
           image: {{ .Values.ebpfProfiler.image | default "ebpf-profiler:latest" }}
+          imagePullPolicy: IfNotPresent
           command:
             - "/usr/local/bin/ebpf-profiler"
             - "-collection-agent"
-            - "otel-collector:4317"
+            - "{{ .Values.ebpfProfiler.collectorEndpoint }}"
             - "-no-kernel-version-check"
             - "-disable-tls"
             - "-v"

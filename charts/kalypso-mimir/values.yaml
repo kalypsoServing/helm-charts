@@ -54,6 +54,7 @@ mimir-distributed:
         ring:
           kvstore:
             store: memberlist
+          replication_factor: 1
       alertmanager:
         sharding_ring:
           kvstore:

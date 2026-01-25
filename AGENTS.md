@@ -1,8 +1,8 @@
 # AGENTS.md - Kalypso Infrastructure Helm Charts
 
 > **Last Updated**: 2026-01-25
-> **Project Status**: COMPLETE (All 15 Tasks Done)
-> **Cluster Status**: Running in Kind (kalypso-test)
+> **Project Status**: COMPLETE (All Tasks Done)
+> **Cluster Status**: Running in Kind (kind-kind)
 
 ---
 
