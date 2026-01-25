@@ -11,7 +11,7 @@ tempo-distributed:
       backend: s3
       s3:
         bucket: tempo-bucket
-        endpoint: minio.minio.svc.cluster.local:9000
+        endpoint: kalypso-minio.minio.svc.cluster.local:9000
         access_key: rootuser
         secret_key: rootpass123
         insecure: true
