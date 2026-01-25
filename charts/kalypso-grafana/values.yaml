@@ -11,7 +11,8 @@ grafana:
       datasources:
         - name: Mimir
           type: prometheus
-          url: http://mimir-distributed-gateway.mimir.svc.cluster.local:80/prometheus
+          uid: mimir
+          url: http://kalypso-mimir-nginx.mimir.svc.cluster.local:80/prometheus
           access: proxy
           isDefault: true
           editable: true
@@ -21,28 +22,46 @@ grafana:
         
         - name: Tempo
           type: tempo
-          url: http://tempo-distributed-query-frontend.tempo.svc.cluster.local:3100
+          uid: tempo
+          url: http://kalypso-tempo-query-frontend.tempo.svc.cluster.local:3100
           access: proxy
           editable: true
           jsonData:
             httpMethod: GET
-            tracesToLogs:
-              datasourceUid: Loki
+            tracesToLogsV2:
+              datasourceUid: loki
+              tags: ['job', 'instance', 'pod', 'namespace']
+              mappedTags: [{ key: 'service.name', value: 'service' }]
+              mapTagNamesEnabled: true
+              filterByTraceID: true
+            tracesToMetrics:
+              datasourceUid: mimir
+              tags: [{ key: 'service.name', value: 'service' }]
+            tracesToProfiles:
+              datasourceUid: pyroscope
+              tags: ['job', 'instance', 'pod', 'namespace']
+              profileTypeId: 'process_cpu:cpu:nanoseconds:cpu:nanoseconds'
+            nodeGraph:
+              enabled: true
+            serviceMap:
+              datasourceUid: mimir
         
         - name: Loki
           type: loki
-          url: http://loki-gateway.loki.svc.cluster.local:80
+          uid: loki
+          url: http://kalypso-loki-gateway.loki.svc.cluster.local:80
           access: proxy
           editable: true
           jsonData:
             derivedFields:
-              - datasourceUid: Tempo
-                matcherRegex: "traceID=(\\w+)"
+              - datasourceUid: tempo
+                matcherRegex: "(?:traceID|trace_id|traceId)=?(\\w+)"
                 name: TraceID
                 url: "$${__value.raw}"
         
         - name: Pyroscope
           type: grafana-pyroscope-datasource
-          url: http://pyroscope.pyroscope.svc.cluster.local:4040
+          uid: pyroscope
+          url: http://kalypso-pyroscope.pyroscope.svc.cluster.local:4040
           access: proxy
           editable: true
