@@ -85,3 +85,8 @@ data:
           receivers: [otlp]
           processors: [memory_limiter, batch, resource]
           exporters: [loki]
+        
+        profiles:
+          receivers: [otlp]
+          processors: [memory_limiter, resource]
+          exporters: [otlphttp/pyroscope]

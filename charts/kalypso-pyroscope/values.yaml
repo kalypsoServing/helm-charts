@@ -127,9 +127,10 @@ ebpfProfiler:
   enabled: true
   image: "otel/opentelemetry-ebpf-profiler-dev:202501021410"
   imagePullPolicy: IfNotPresent
-  # Pyroscope distributor endpoint for receiving profiles
-  # Format: <release>-pyroscope-distributor.<namespace>.svc.cluster.local:4040
-  collectorEndpoint: "kalypso-pyroscope-pyroscope-distributor.pyroscope.svc.cluster.local:4040"
+  # OTel Collector OTLP endpoint for receiving profiles
+  # eBPF profiler sends profiles to OTel Collector via OTLP, which then forwards to Pyroscope
+  # Format: <otel-collector-service>.<namespace>.svc.cluster.local:<otlp-grpc-port>
+  collectorEndpoint: "otel-kalypso-otel-collector.otel-system.svc.cluster.local:4317"
   nodeSelector:
     kubernetes.io/os: linux
     kubernetes.io/arch: amd64
