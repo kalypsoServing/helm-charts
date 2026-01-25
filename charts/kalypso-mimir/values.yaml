@@ -11,6 +11,10 @@ mimir-distributed:
   # Mimir configuration
   mimir:
     structuredConfig:
+      # Disable ingest storage (Kafka) - use classic architecture with direct S3 upload
+      ingest_storage:
+        enabled: false
+      
       common:
         storage:
           backend: s3
@@ -25,6 +29,8 @@ mimir-distributed:
         s3:
           endpoint: kalypso-minio.minio.svc.cluster.local:9000
           bucket_name: mimir-blocks
+          access_key_id: "rootuser"
+          secret_access_key: "rootpass123"
           insecure: true
       
       alertmanager_storage:
@@ -51,28 +57,38 @@ mimir-distributed:
           kvstore:
             store: memberlist
       ingester:
+        # Classic architecture: enable Push gRPC API (direct to ingester, no Kafka)
+        push_grpc_method_enabled: true
         ring:
           kvstore:
             store: memberlist
           replication_factor: 1
+        data_dir: /data
       alertmanager:
         sharding_ring:
           kvstore:
             store: memberlist
+        data_dir: /data
       compactor:
         sharding_ring:
           kvstore:
             store: memberlist
+        data_dir: /data
       store_gateway:
         sharding_ring:
           kvstore:
             store: memberlist
+        data_dir: /data
   
   # Component replicas (development)
   ingester:
+    # Note: Ingester must remain as StatefulSet in mimir-distributed 6.1.0
+    # StatefulSet is required for ingester component
     replicas: 1
     zoneAwareReplication:
       enabled: false
+    persistence:
+      enabled: false  # No PVC needed - data stored in S3
     resources:
       requests:
         cpu: 50m
@@ -100,18 +116,26 @@ mimir-distributed:
         memory: 32Mi
   
   store_gateway:
+    statefulSet:
+      enabled: false  # Use Deployment instead of StatefulSet
     replicas: 1
     zoneAwareReplication:
       enabled: false
+    persistence:
+      enabled: false  # No PVC needed - data stored in S3
     resources:
       requests:
         cpu: 10m
         memory: 64Mi
   
   alertmanager:
+    statefulSet:
+      enabled: false  # Use Deployment instead of StatefulSet
     replicas: 1
     zoneAwareReplication:
       enabled: false
+    persistence:
+      enabled: false  # No PVC needed - data stored in S3
     resources:
       requests:
         cpu: 10m
@@ -119,7 +143,11 @@ mimir-distributed:
   
   compactor:
     enabled: true
+    statefulSet:
+      enabled: false  # Use Deployment instead of StatefulSet
     replicas: 1
+    persistence:
+      enabled: false  # No PVC needed - data stored in S3
   
   # Disable test components
   smoke_test:
