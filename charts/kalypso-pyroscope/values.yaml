@@ -1,27 +1,23 @@
-# Pyroscope Base Configuration
-# Microservices v2 deployment with S3 storage
+# Kalypso Pyroscope Configuration
+# Using Pyroscope Helm Chart v1.18.0
+# Microservices mode with external MinIO storage
 
+# Disable built-in MinIO (using kalypso-minio instead)
 minio:
   enabled: false
 
+# Disable Grafana Agent (deprecated)
+agent:
+  enabled: false
+
+# Disable Alloy (using external OTel if needed)
+alloy:
+  enabled: false
+
+# Main Pyroscope configuration
 pyroscope:
-  agent:
-    enabled: false
-
-  alloy:
-    enabled: false
-
-  podAnnotations:
-    profiles.grafana.com/cpu.scrape: "true"
-    profiles.grafana.com/cpu.port: "4040"
-    profiles.grafana.com/cpu.port_name: http2
-    profiles.grafana.com/memory.scrape: "false"
-    profiles.grafana.com/goroutine.scrape: "false"
-
-  extraArgs:
-    storage.backend: s3
-
-  config: |
+  # Storage configuration using structuredConfig
+  structuredConfig:
     storage:
       backend: s3
       s3:
@@ -30,149 +26,118 @@ pyroscope:
         access_key_id: rootuser
         secret_access_key: rootpass123
         insecure: true
-        signature_version: v4
 
-  architecture:
-    deployUnifiedServices: false
+  # Extra arguments for Pyroscope
+  extraArgs:
+    log.level: info
 
-    microservices:
-      enabled: true
+  # Microservices mode - define components
+  # Using minimal resources for local/dev deployment
+  components:
+    querier:
+      kind: Deployment
+      replicaCount: 1
+      resources:
+        limits:
+          memory: 512Mi
+        requests:
+          memory: 128Mi
+          cpu: 100m
 
-      v2:
-        query-backend:
-          replicaCount: 1
-          resources:
-            limits:
-              memory: 512Mi
-            requests:
-              memory: 128Mi
-              cpu: 100m
+    query-frontend:
+      kind: Deployment
+      replicaCount: 1
+      resources:
+        limits:
+          memory: 512Mi
+        requests:
+          memory: 128Mi
+          cpu: 100m
 
-        query-frontend:
-          replicaCount: 1
-          resources:
-            limits:
-              memory: 512Mi
-            requests:
-              memory: 128Mi
-              cpu: 100m
+    query-scheduler:
+      kind: Deployment
+      replicaCount: 1
+      resources:
+        limits:
+          memory: 512Mi
+        requests:
+          memory: 128Mi
+          cpu: 100m
 
-        distributor:
-          replicaCount: 1
-          resources:
-            limits:
-              memory: 512Mi
-            requests:
-              memory: 128Mi
-              cpu: 100m
+    distributor:
+      kind: Deployment
+      replicaCount: 1
+      resources:
+        limits:
+          memory: 512Mi
+        requests:
+          memory: 128Mi
+          cpu: 100m
 
-        segment-writer:
-          replicaCount: 1
-          terminationGracePeriodSeconds: 600
-          persistence:
-            enabled: false
-          resources:
-            limits:
-              memory: 2Gi
-            requests:
-              memory: 512Mi
-              cpu: 500m
+    ingester:
+      kind: Deployment
+      replicaCount: 1
+      resources:
+        limits:
+          memory: 1Gi
+        requests:
+          memory: 256Mi
+          cpu: 200m
 
-        compaction-worker:
-          replicaCount: 1
-          terminationGracePeriodSeconds: 1200
-          resources:
-            limits:
-              memory: 1Gi
-            requests:
-              memory: 256Mi
-              cpu: 500m
+    compactor:
+      kind: Deployment
+      replicaCount: 1
+      resources:
+        limits:
+          memory: 1Gi
+        requests:
+          memory: 256Mi
+          cpu: 200m
 
-        metastore:
-          replicaCount: 1
-          terminationGracePeriodSeconds: 1200
-          resources:
-            limits:
-              memory: 1Gi
-            requests:
-              memory: 256Mi
-              cpu: 500m
-          extraArgs:
-            metastore.raft.bootstrap-expect-peers: 1
-            adaptive-placement.max-dataset-shards: 512
-            adaptive-placement.unit-size-bytes: 131072
-            metastore.index.cleanup-interval: 1m
-            metastore.snapshot-compact-on-restore: true
+    store-gateway:
+      kind: Deployment
+      replicaCount: 1
+      resources:
+        limits:
+          memory: 1Gi
+        requests:
+          memory: 256Mi
+          cpu: 200m
 
-        tenant-settings:
-          replicaCount: 1
-          resources:
-            limits:
-              memory: 256Mi
-            requests:
-              memory: 64Mi
-              cpu: 100m
+  # Pod annotations for self-profiling
+  podAnnotations:
+    profiles.grafana.com/cpu.scrape: "true"
+    profiles.grafana.com/cpu.port_name: http2
+    profiles.grafana.com/memory.scrape: "true"
+    profiles.grafana.com/memory.port_name: http2
+    profiles.grafana.com/goroutine.scrape: "true"
+    profiles.grafana.com/goroutine.port_name: http2
 
-        ad-hoc-profiles:
-          replicaCount: 1
-          resources:
-            limits:
-              memory: 256Mi
-            requests:
-              memory: 64Mi
-              cpu: 100m
+  # Service configuration
+  service:
+    type: ClusterIP
+    port: 4040
 
-        admin:
-          replicaCount: 1
-          resources:
-            limits:
-              memory: 256Mi
-            requests:
-              memory: 64Mi
-              cpu: 100m
-
-    storage:
-      v1: false
-      v2: true
-
-      migration:
-        ingesterWeight: 0.0
-        segmentWriterWeight: 1.0
-
+  # Disable ServiceMonitor (no Prometheus Operator)
   serviceMonitor:
     enabled: false
 
-  serviceAccount:
-    name: pyroscope
-
+# eBPF Profiler DaemonSet (custom template)
 ebpfProfiler:
-  # Enable eBPF profiler DaemonSet
   enabled: true
-  
-  # Official OTel eBPF Profiler image (Linux AMD64/ARM64)
-  # Pre-built image from OpenTelemetry project
   image: "otel/opentelemetry-ebpf-profiler-dev:202501021410"
   imagePullPolicy: IfNotPresent
-  
-  # OTel Collector endpoint for sending profiles (OTLP/gRPC)
-  collectorEndpoint: "kalypso-otel-collector.otel-system.svc.cluster.local:4317"
-  
-  # Node selector - only deploy on Linux AMD64 nodes
+  # Pyroscope distributor endpoint for receiving profiles
+  # Format: <release>-pyroscope-distributor.<namespace>.svc.cluster.local:4040
+  collectorEndpoint: "kalypso-pyroscope-pyroscope-distributor.pyroscope.svc.cluster.local:4040"
   nodeSelector:
     kubernetes.io/os: linux
     kubernetes.io/arch: amd64
-  
-  # Tolerations for scheduling on all nodes (including control-plane)
   tolerations:
     - operator: Exists
-  
-  # Resources
   resources:
     requests:
       cpu: 100m
       memory: 128Mi
     limits:
       memory: 512Mi
-
-otelCollector:
-  enabled: false
