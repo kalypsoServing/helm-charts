@@ -1,0 +1,73 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: kalypso-infra
+  namespace: argocd
+spec:
+  generators:
+    - list:
+        elements:
+          - name: otel
+            namespace: otel-system
+            path: charts/kalypso-otel
+            wave: "1"
+          - name: istio
+            namespace: istio-system
+            path: charts/kalypso-istio
+            wave: "2"
+          - name: minio
+            namespace: minio
+            path: charts/kalypso-minio
+            wave: "3"
+          - name: mimir
+            namespace: mimir
+            path: charts/kalypso-mimir
+            wave: "4"
+          - name: tempo
+            namespace: tempo
+            path: charts/kalypso-tempo
+            wave: "4"
+          - name: loki
+            namespace: loki
+            path: charts/kalypso-loki
+            wave: "4"
+          - name: pyroscope
+            namespace: pyroscope
+            path: charts/kalypso-pyroscope
+            wave: "5"
+          - name: grafana
+            namespace: grafana
+            path: charts/kalypso-grafana
+            wave: "6"
+  
+  template:
+    metadata:
+      name: 'kalypso-{{name}}'
+      annotations:
+        argocd.argoproj.io/sync-wave: '{{wave}}'
+    spec:
+      project: kalypso-infra
+      
+      source:
+        repoURL: https://github.com/YOUR_ORG/kalypso-infra-helm-chart.git
+        targetRevision: HEAD
+        path: '{{path}}'
+        helm:
+          releaseName: '{{name}}'
+      
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: '{{namespace}}'
+      
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+        retry:
+          limit: 5
+          backoff:
+            duration: 5s
+            factor: 2
+            maxDuration: 3m
