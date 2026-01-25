@@ -146,10 +146,33 @@ pyroscope:
     name: pyroscope
 
 ebpfProfiler:
+  # Enable eBPF profiler DaemonSet
   enabled: true
-  image: "ebpf-profiler:latest"
-  # OTel Collector endpoint for sending profiles
+  
+  # Official OTel eBPF Profiler image (Linux AMD64/ARM64)
+  # Pre-built image from OpenTelemetry project
+  image: "otel/opentelemetry-ebpf-profiler-dev:202501021410"
+  imagePullPolicy: IfNotPresent
+  
+  # OTel Collector endpoint for sending profiles (OTLP/gRPC)
   collectorEndpoint: "kalypso-otel-collector.otel-system.svc.cluster.local:4317"
+  
+  # Node selector - only deploy on Linux AMD64 nodes
+  nodeSelector:
+    kubernetes.io/os: linux
+    kubernetes.io/arch: amd64
+  
+  # Tolerations for scheduling on all nodes (including control-plane)
+  tolerations:
+    - operator: Exists
+  
+  # Resources
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      memory: 512Mi
 
 otelCollector:
   enabled: false

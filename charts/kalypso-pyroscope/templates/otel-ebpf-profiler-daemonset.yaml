@@ -18,6 +18,14 @@ spec:
         app.kubernetes.io/component: ebpf-profiler
     spec:
       hostPID: true
+      {{- with .Values.ebpfProfiler.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.ebpfProfiler.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       initContainers:
         - name: wait-for-collector
           image: busybox:1.36
@@ -33,12 +41,11 @@ spec:
               done
       containers:
         - name: profiler
-          image: {{ .Values.ebpfProfiler.image | default "ebpf-profiler:latest" }}
-          imagePullPolicy: IfNotPresent
+          image: {{ .Values.ebpfProfiler.image }}
+          imagePullPolicy: {{ .Values.ebpfProfiler.imagePullPolicy | default "IfNotPresent" }}
           command:
-            - "/usr/local/bin/ebpf-profiler"
-            - "-collection-agent"
-            - "{{ .Values.ebpfProfiler.collectorEndpoint }}"
+            - "/ebpf-profiler"
+            - "-collection-agent={{ .Values.ebpfProfiler.collectorEndpoint }}"
             - "-no-kernel-version-check"
             - "-disable-tls"
             - "-v"
@@ -51,12 +58,10 @@ spec:
               mountPath: /proc
             - name: cgroup
               mountPath: /sys/fs/cgroup
+          {{- with .Values.ebpfProfiler.resources }}
           resources:
-            requests:
-              cpu: 100m
-              memory: 128Mi
-            limits:
-              memory: 512Mi
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
       volumes:
         - name: kernel-debug
           hostPath:
