@@ -2,6 +2,53 @@
 
 Multi-namespace Kubernetes observability stack with LGTM (Loki, Grafana, Tempo, Mimir) + Pyroscope + Istio + MinIO, deployed via ArgoCD ApplicationSet.
 
+## Quickstart
+
+### Deploy with ArgoCD (Recommended)
+
+```bash
+# 1. Ensure ArgoCD is installed
+kubectl create namespace argocd
+kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+
+# 2. Wait for ArgoCD to be ready
+kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=argocd-server -n argocd --timeout=300s
+
+# 3. Update repository URL in applicationset.yaml
+# Edit argocd/applicationset.yaml line 52:
+# repoURL: https://github.com/YOUR_ORG/kalypso-infra-helm-chart.git
+
+# 4. Apply ArgoCD resources
+kubectl apply -f argocd/project.yaml
+kubectl apply -f argocd/applicationset.yaml
+
+# 5. Monitor deployment
+kubectl get applications -n argocd
+watch kubectl get pods -A
+
+# 6. Access Grafana
+kubectl port-forward -n grafana svc/kalypso-grafana 3000:80
+# Open http://localhost:3000
+# Username: admin
+# Password: kubectl get secret -n grafana kalypso-grafana -o jsonpath="{.data.admin-password}" | base64 -d
+```
+
+### Manual Helm Installation (Testing)
+
+```bash
+# Install in dependency order
+helm install kalypso-otel charts/kalypso-otel -n otel-system --create-namespace
+helm install kalypso-istio charts/kalypso-istio -n istio-system --create-namespace
+helm install kalypso-minio charts/kalypso-minio -n minio --create-namespace
+helm install kalypso-tempo charts/kalypso-tempo -n tempo --create-namespace
+helm install kalypso-loki charts/kalypso-loki -n loki --create-namespace
+helm install kalypso-mimir charts/kalypso-mimir -n mimir --create-namespace
+helm install kalypso-pyroscope charts/kalypso-pyroscope -n pyroscope --create-namespace
+helm install kalypso-grafana charts/kalypso-grafana -n grafana --create-namespace
+```
+
+**Note**: For OTel eBPF profiler, you must build and push the image first (see [eBPF Profiler Setup](#ebpf-profiler-setup) below).
+
 ## Architecture
 
 This repository contains 8 independent Helm charts, each deployed to its own namespace:
@@ -36,7 +83,7 @@ Wave 6: grafana
 ### Cross-Namespace Communication
 
 All components communicate via Kubernetes DNS FQDN:
-- MinIO endpoint: `minio.minio.svc.cluster.local:9000`
+- MinIO endpoint: `kalypso-minio.minio.svc.cluster.local:9000`
 - Mimir: `mimir-distributed-gateway.mimir.svc.cluster.local:80`
 - Tempo: `tempo-distributed-query-frontend.tempo.svc.cluster.local:3100`
 - Loki: `loki-gateway.loki.svc.cluster.local:80`
@@ -48,6 +95,46 @@ All components communicate via Kubernetes DNS FQDN:
 - ArgoCD installed in the cluster
 - Linux nodes with kernel 4.9+ (for eBPF profiling)
 - Helm 3.x (for manual installation)
+
+## eBPF Profiler Setup
+
+The Pyroscope chart includes an OTel eBPF profiler for automatic continuous profiling. You must build the profiler image before deployment.
+
+### Build eBPF Profiler Image
+
+```bash
+cd docker/ebpf-profiler
+
+# For AMD64
+docker build -t ebpf-profiler:latest .
+
+# For ARM64 (edit Dockerfile first)
+# Change line 17-18 to use: go1.22.10.linux-arm64.tar.gz
+docker build -t ebpf-profiler:latest .
+
+# Push to your registry
+docker tag ebpf-profiler:latest your-registry/ebpf-profiler:latest
+docker push your-registry/ebpf-profiler:latest
+```
+
+### Update Pyroscope Values
+
+Edit `charts/kalypso-pyroscope/values.yaml`:
+
+```yaml
+ebpfProfiler:
+  enabled: true
+  image: your-registry/ebpf-profiler:latest  # Update this
+```
+
+### Skip eBPF Profiler (Optional)
+
+If you don't need eBPF profiling, disable it:
+
+```yaml
+ebpfProfiler:
+  enabled: false
+```
 
 ## Installation
 
