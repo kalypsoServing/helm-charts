@@ -14,7 +14,3 @@ dependencies:
     version: "1.21.0"
     repository: "https://istio-release.storage.googleapis.com/charts"
     condition: istiod.enabled
-  - name: gateway
-    version: "1.21.0"
-    repository: "https://istio-release.storage.googleapis.com/charts"
-    condition: gateway.enabled
