@@ -3,14 +3,14 @@ name: kalypso-istio
 description: Istio service mesh components for Kalypso infrastructure
 type: application
 version: 0.1.0
-appVersion: "1.21.0"
+appVersion: "1.28.3"
 
 dependencies:
   - name: base
-    version: "1.21.0"
+    version: "1.28.3"
     repository: "https://istio-release.storage.googleapis.com/charts"
     condition: base.enabled
   - name: istiod
-    version: "1.21.0"
+    version: "1.28.3"
     repository: "https://istio-release.storage.googleapis.com/charts"
     condition: istiod.enabled

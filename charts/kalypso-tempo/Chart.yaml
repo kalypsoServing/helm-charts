@@ -7,6 +7,6 @@ appVersion: "1.0.0"
 
 dependencies:
   - name: tempo-distributed
-    version: "1.7.0"
+    version: "1.60.0"
     repository: "https://grafana.github.io/helm-charts"
     condition: tempo-distributed.enabled
