@@ -14,9 +14,6 @@ data:
           http:
             endpoint: 0.0.0.0:4318
     
-    processors:
-      batch: {}
-    
     exporters:
       otlp:
         endpoint: pyroscope:4040
@@ -27,7 +24,6 @@ data:
       pipelines:
         profiles:
           receivers: [otlp]
-          processors: [batch]
           exporters: [otlp]
       telemetry:
         logs:
