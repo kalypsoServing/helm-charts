@@ -63,22 +63,18 @@ mimir-distributed:
           kvstore:
             store: memberlist
           replication_factor: 1
-        data_dir: /data
       alertmanager:
         sharding_ring:
           kvstore:
             store: memberlist
-        data_dir: /data
       compactor:
         sharding_ring:
           kvstore:
             store: memberlist
-        data_dir: /data
       store_gateway:
         sharding_ring:
           kvstore:
             store: memberlist
-        data_dir: /data
   
   # Component replicas (development)
   ingester:
