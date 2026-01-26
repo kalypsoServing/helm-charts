@@ -10,3 +10,7 @@ dependencies:
     version: "0.102.0"
     repository: "https://open-telemetry.github.io/opentelemetry-helm-charts"
     condition: opentelemetry-operator.enabled
+  - name: opentelemetry-ebpf-instrumentation
+    version: "0.4.3"
+    repository: "https://open-telemetry.github.io/opentelemetry-helm-charts"
+    condition: opentelemetry-ebpf-instrumentation.enabled
