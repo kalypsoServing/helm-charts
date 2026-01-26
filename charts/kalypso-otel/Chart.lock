@@ -2,5 +2,8 @@ dependencies:
 - name: opentelemetry-operator
   repository: https://open-telemetry.github.io/opentelemetry-helm-charts
   version: 0.102.0
-digest: sha256:2e50c21d70b9d348ff3f28f555102ee4e2cdb4b4561fd6b5d8a7d51d4f0ec2b3
-generated: "2026-01-25T19:07:32.920112896+09:00"
+- name: opentelemetry-ebpf-instrumentation
+  repository: https://open-telemetry.github.io/opentelemetry-helm-charts
+  version: 0.4.3
+digest: sha256:74e0eb235d19ee98b772c95f8f9293c970d7a446f1c86221a868cbc9722bc8e4
+generated: "2026-01-26T10:24:35.229768+09:00"
