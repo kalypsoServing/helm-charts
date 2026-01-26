@@ -122,23 +122,5 @@ pyroscope:
   serviceMonitor:
     enabled: false
 
-# eBPF Profiler DaemonSet (custom template)
-ebpfProfiler:
-  enabled: true
-  image: "otel/opentelemetry-ebpf-profiler-dev:202501021410"
-  imagePullPolicy: IfNotPresent
-  # OTel Collector OTLP endpoint for receiving profiles
-  # eBPF profiler sends profiles to OTel Collector via OTLP, which then forwards to Pyroscope
-  # Format: <otel-collector-service>.<namespace>.svc.cluster.local:<otlp-grpc-port>
-  collectorEndpoint: "otel-kalypso-otel-collector.otel-system.svc.cluster.local:4317"
-  nodeSelector:
-    kubernetes.io/os: linux
-    kubernetes.io/arch: amd64
-  tolerations:
-    - operator: Exists
-  resources:
-    requests:
-      cpu: 100m
-      memory: 128Mi
-    limits:
-      memory: 512Mi
+# eBPF Profiler has been moved to kalypso-otel chart
+# See: charts/kalypso-otel (opentelemetry-ebpf-instrumentation dependency)
