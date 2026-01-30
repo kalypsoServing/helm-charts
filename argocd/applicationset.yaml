@@ -9,39 +9,39 @@ spec:
         elements:
           - name: cert-manager
             namespace: cert-manager
-            path: charts/cert-manager
+            path: manifests/cert-manager
             wave: "0"
           - name: otel
             namespace: otel-system
-            path: charts/kalypso-otel
+            path: manifests/otel
             wave: "1"
           - name: istio
             namespace: istio-system
-            path: charts/kalypso-istio
+            path: manifests/istio
             wave: "2"
-          - name: kalypso-minio
+          - name: minio
             namespace: minio
-            path: charts/kalypso-minio
+            path: manifests/minio
             wave: "3"
           - name: mimir
             namespace: mimir
-            path: charts/kalypso-mimir
+            path: manifests/mimir
             wave: "4"
           - name: tempo
             namespace: tempo
-            path: charts/kalypso-tempo
+            path: manifests/tempo
             wave: "4"
           - name: loki
             namespace: loki
-            path: charts/kalypso-loki
+            path: manifests/loki
             wave: "4"
           - name: pyroscope
             namespace: pyroscope
-            path: charts/kalypso-pyroscope
+            path: manifests/pyroscope
             wave: "5"
           - name: grafana
             namespace: grafana
-            path: charts/kalypso-grafana
+            path: manifests/grafana
             wave: "6"
   
   template:
@@ -56,8 +56,8 @@ spec:
         repoURL: https://github.com/KalypsoServing/helm-charts.git
         targetRevision: HEAD
         path: '{{path}}'
-        helm:
-          releaseName: '{{name}}'
+        kustomize:
+          enableHelm: true
       
       destination:
         server: https://kubernetes.default.svc
