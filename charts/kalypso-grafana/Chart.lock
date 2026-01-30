@@ -1,6 +1,0 @@
-dependencies:
-- name: grafana
-  repository: https://grafana.github.io/helm-charts
-  version: 10.5.12
-digest: sha256:bdc4b537b68f8374ed33845640e64dd9c8b92e7347239ed3689cbb2bd6f1e726
-generated: "2026-01-25T19:08:49.694417564+09:00"

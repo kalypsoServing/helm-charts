@@ -1,0 +1,62 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: tempo
+
+helmCharts:
+  - name: tempo-distributed
+    repo: https://grafana.github.io/helm-charts
+    version: 1.60.0
+    releaseName: tempo
+    namespace: tempo
+    valuesInline:
+      minio:
+        enabled: false
+      storage:
+        trace:
+          backend: s3
+          s3:
+            bucket: tempo-bucket
+            endpoint: kalypso-minio.minio.svc.cluster.local:9000
+            access_key: rootuser
+            secret_key: rootpass123
+            insecure: true
+      gateway:
+        enabled: true
+        replicas: 1
+      distributor:
+        replicas: 1
+      ingester:
+        replicas: 1
+        persistence:
+          enabled: false
+      tempo:
+        structuredConfig:
+          ingester:
+            lifecycler:
+              ring:
+                replication_factor: 1
+      compactor:
+        replicas: 1
+      querier:
+        replicas: 1
+      queryFrontend:
+        replicas: 1
+      metricsGenerator:
+        enabled: false
+      traces:
+        otlp:
+          http:
+            enabled: true
+          grpc:
+            enabled: true
+        zipkin:
+          enabled: false
+        jaeger:
+          thriftHttp:
+            enabled: true
+        opencensus:
+          enabled: false
+
+resources:
+  - namespace.yaml
