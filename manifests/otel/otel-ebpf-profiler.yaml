@@ -79,7 +79,7 @@ spec:
             - "--config=/etc/otel/config.yaml"
             - "--feature-gates=service.profilesSupport"
           securityContext:
-            privileged: false
+            privileged: true
             runAsUser: 0
             capabilities:
               add:

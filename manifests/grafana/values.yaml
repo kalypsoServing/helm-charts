@@ -52,7 +52,7 @@ datasources:
             tags: [{ key: 'service.name', value: 'service' }]
           tracesToProfiles:
             datasourceUid: pyroscope
-            tags: ['job', 'instance', 'pod', 'namespace']
+            tags: ['service.name', 'service', 'pod', 'namespace']
             profileTypeId: 'process_cpu:cpu:nanoseconds:cpu:nanoseconds'
           nodeGraph:
             enabled: true
