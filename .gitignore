@@ -1,4 +1,18 @@
 helm-charts/
 charts.backup/
 **/charts/
+
+# OS
 .DS_Store
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+uv.lock
+
+# IDE / Tools
+.claude/
+.idea/
+.vscode/
+*.swp
