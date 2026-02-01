@@ -135,6 +135,18 @@ All components communicate via Kubernetes DNS FQDN:
 - ArgoCD installed with Kustomize Helm support enabled
 - Linux nodes with kernel 4.9+ (for eBPF profiling)
 
+### Enable Kustomize Helm Support in ArgoCD
+
+This is required for ArgoCD to render Helm charts via Kustomize:
+
+```bash
+kubectl patch configmap argocd-cm -n argocd --type merge -p '{"data":{"kustomize.buildOptions":"--enable-helm"}}'
+
+# Restart ArgoCD components to pick up the change
+kubectl delete pods -n argocd -l app.kubernetes.io/name=argocd-repo-server
+kubectl delete pods -n argocd -l app.kubernetes.io/name=argocd-applicationset-controller
+```
+
 ## Installation
 
 ### Option 1: ArgoCD ApplicationSet (Recommended)
