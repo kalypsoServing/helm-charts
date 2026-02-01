@@ -37,8 +37,7 @@ metadata:
 data:
   config.yaml: |
     receivers:
-      ebpf_profiler:
-        verbose: true
+      profiling:
 
     processors:
       batch:
@@ -53,7 +52,7 @@ data:
     service:
       pipelines:
         profiles:
-          receivers: [ebpf_profiler]
+          receivers: [profiling]
           processors: [batch]
           exporters: [otlp]
 ---
