@@ -49,10 +49,7 @@ spec:
       hostPID: true
       containers:
         - name: profiler
-          image: localhost/otel/opentelemetry-ebpf-profiler-dev:latest
-          imagePullPolicy: Never
-          command:
-            - "/otel-profiling-agent"
+          image: otel/opentelemetry-collector-ebpf-profiler:0.134.1
           args:
             - "-collection-agent"
             - "kalypso-otel-collector.otel-system.svc.cluster.local:4317"
