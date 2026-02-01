@@ -89,15 +89,21 @@ Wave 6: kalypso-grafana
 
 ### ApplicationSet Discovery
 
-The ApplicationSet uses Git file generator with `manifests/*/appset.yaml` to discover manifests. Each manifest directory contains an `appset.yaml` with `namespace` and `wave`:
+The ApplicationSet uses Git file generator with `manifests/*/namespace.yaml` to discover manifests. Each manifest directory must have a `namespace.yaml` with sync-wave annotation:
 
 ```yaml
-# manifests/<component>/appset.yaml
-namespace: cert-manager
-wave: "0"
+# manifests/<component>/namespace.yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: my-component
+  labels:
+    name: my-component
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
 ```
 
-To add a new component, create `manifests/<name>/` with `kustomization.yaml`, `values.yaml`, and `appset.yaml`. ArgoCD will automatically deploy it.
+To add a new component, create `manifests/<name>/` with `kustomization.yaml`, `values.yaml`, and `namespace.yaml`. ArgoCD will automatically deploy it.
 
 ### Cross-Namespace Communication
 

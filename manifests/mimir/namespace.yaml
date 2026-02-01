@@ -4,3 +4,5 @@ metadata:
   name: mimir
   labels:
     name: mimir
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"

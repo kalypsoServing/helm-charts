@@ -11,12 +11,12 @@ spec:
         repoURL: https://github.com/KalypsoServing/helm-charts.git
         revision: HEAD
         files:
-          - path: manifests/*/appset.yaml
+          - path: manifests/*/namespace.yaml
   template:
     metadata:
       name: 'kalypso-{{.path.basename}}'
       annotations:
-        argocd.argoproj.io/sync-wave: '{{.wave}}'
+        argocd.argoproj.io/sync-wave: '{{index .metadata.annotations "argocd.argoproj.io/sync-wave"}}'
     spec:
       project: kalypso-infra
       
@@ -29,7 +29,7 @@ spec:
       
       destination:
         server: https://kubernetes.default.svc
-        namespace: '{{.namespace}}'
+        namespace: '{{.metadata.name}}'
       
       syncPolicy:
         automated:

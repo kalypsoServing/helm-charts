@@ -4,3 +4,5 @@ metadata:
   name: loki
   labels:
     name: loki
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"

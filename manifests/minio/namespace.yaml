@@ -4,3 +4,5 @@ metadata:
   name: minio
   labels:
     name: minio
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"

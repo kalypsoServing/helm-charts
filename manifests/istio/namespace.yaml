@@ -4,3 +4,5 @@ metadata:
   name: istio-system
   labels:
     name: istio-system
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"

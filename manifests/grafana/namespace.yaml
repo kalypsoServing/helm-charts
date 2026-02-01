@@ -4,3 +4,5 @@ metadata:
   name: grafana
   labels:
     name: grafana
+  annotations:
+    argocd.argoproj.io/sync-wave: "6"

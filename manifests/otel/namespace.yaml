@@ -4,3 +4,5 @@ metadata:
   name: otel-system
   labels:
     name: otel-system
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
