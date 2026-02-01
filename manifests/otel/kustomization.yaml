@@ -24,3 +24,4 @@ resources:
   - namespace.yaml
   - otel-collector-rbac.yaml
   - otel-collector.yaml
+  - otel-ebpf-profiler.yaml

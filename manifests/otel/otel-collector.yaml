@@ -7,6 +7,8 @@ spec:
   mode: deployment
   replicas: 1
   serviceAccount: kalypso-otel-collector
+  args:
+    --feature-gates=service.profilesSupport
   config:
     receivers:
       otlp:
@@ -34,6 +36,10 @@ spec:
         endpoint: tempo-distributor.tempo.svc.cluster.local:4317
         tls:
           insecure: true
+      otlp/pyroscope:
+        endpoint: pyroscope-distributor.pyroscope.svc.cluster.local:4040
+        tls:
+          insecure: true
       prometheusremotewrite:
         endpoint: http://mimir-gateway.mimir.svc.cluster.local:80/api/v1/push
         tls:
@@ -48,3 +54,6 @@ spec:
           receivers: [otlp]
           processors: [memory_limiter, k8sattributes, batch]
           exporters: [prometheusremotewrite]
+        profiles:
+          receivers: [otlp]
+          exporters: [otlp/pyroscope]
