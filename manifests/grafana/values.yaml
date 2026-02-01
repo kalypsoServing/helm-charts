@@ -62,7 +62,7 @@ datasources:
             datasourceUid: pyroscope
             tags:
               - key: service.name
-                value: service.name
+                value: service_name
               - key: pod
                 value: pod
               - key: namespace

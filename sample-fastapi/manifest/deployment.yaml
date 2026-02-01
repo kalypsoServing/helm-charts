@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
         - name: sample-fastapi
-          image: sky5367/sample-fastapi:v0.0.8
+          image: sky5367/sample-fastapi:v0.0.9
           imagePullPolicy: Always
           ports:
             - containerPort: 8000
