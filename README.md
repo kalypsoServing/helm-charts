@@ -159,32 +159,26 @@ kubectl kustomize manifests/grafana --enable-helm | kubectl apply -f -
 
 ## Configuration
 
-All configuration is managed through Kustomize `kustomization.yaml` files using `helmCharts` with `valuesInline`.
+All configuration is managed through Kustomize `kustomization.yaml` files using `helmCharts` with `valuesFile`. Each manifest directory contains its own `values.yaml` (or chart-specific files like `values-operator.yaml` for multi-chart manifests).
 
 ### Example: Modify MinIO Credentials
 
-Edit `manifests/minio/kustomization.yaml`:
+Edit `manifests/minio/values.yaml`:
 
 ```yaml
-helmCharts:
-  - name: minio
-    valuesInline:
-      rootUser: "newuser"
-      rootPassword: "newpassword"
+rootUser: "newuser"
+rootPassword: "newpassword"
 ```
 
-Then update all dependent components (mimir, tempo, loki, pyroscope) with the new credentials.
+Then update all dependent components (mimir, tempo, loki, pyroscope) in their respective `values.yaml` files with the new credentials.
 
 ### Example: Change Component Replicas
 
-Edit `manifests/mimir/kustomization.yaml`:
+Edit `manifests/mimir/values.yaml`:
 
 ```yaml
-helmCharts:
-  - name: mimir-distributed
-    valuesInline:
-      ingester:
-        replicas: 3
+ingester:
+  replicas: 3
 ```
 
 ## Verification

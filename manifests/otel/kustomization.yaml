@@ -10,13 +10,7 @@ helmCharts:
     version: 0.102.0
     releaseName: opentelemetry-operator
     namespace: otel-system
-    valuesInline:
-      manager:
-        collectorImage:
-          repository: otel/opentelemetry-collector-contrib
-      admissionWebhooks:
-        certManager:
-          enabled: true
+    valuesFile: values-operator.yaml
 
   # OpenTelemetry eBPF Instrumentation
   - name: opentelemetry-ebpf-instrumentation
@@ -24,31 +18,7 @@ helmCharts:
     version: 0.4.3
     releaseName: opentelemetry-ebpf
     namespace: otel-system
-    valuesInline:
-      enabled: true
-      privileged: false
-      extraCapabilities:
-        - BPF
-        - PERFMON
-        - SYS_PTRACE
-        - DAC_READ_SEARCH
-        - CHECKPOINT_RESTORE
-      preset: application
-      rbac:
-        create: true
-      config:
-        create: true
-        data:
-          otel_traces_export:
-            endpoint: "http://kalypso-otel-collector.otel-system.svc.cluster.local:4317"
-          otel_metrics_export:
-            endpoint: "http://kalypso-otel-collector.otel-system.svc.cluster.local:4318/v1/metrics"
-          attributes:
-            kubernetes:
-              enable: true
-          prometheus_export:
-            port: 9090
-            path: /metrics
+    valuesFile: values-ebpf.yaml
 
 resources:
   - namespace.yaml
