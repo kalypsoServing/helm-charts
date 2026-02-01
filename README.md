@@ -87,6 +87,18 @@ Wave 5: kalypso-pyroscope
 Wave 6: kalypso-grafana
 ```
 
+### ApplicationSet Discovery
+
+The ApplicationSet uses Git file generator with `manifests/*/appset.yaml` to discover manifests. Each manifest directory contains an `appset.yaml` with `namespace` and `wave`:
+
+```yaml
+# manifests/<component>/appset.yaml
+namespace: cert-manager
+wave: "0"
+```
+
+To add a new component, create `manifests/<name>/` with `kustomization.yaml`, `values.yaml`, and `appset.yaml`. ArgoCD will automatically deploy it.
+
 ### Cross-Namespace Communication
 
 All components communicate via Kubernetes DNS FQDN:
