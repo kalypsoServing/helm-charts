@@ -12,14 +12,6 @@ helmCharts:
     namespace: otel-system
     valuesFile: values-operator.yaml
 
-  # OpenTelemetry eBPF Instrumentation
-  - name: opentelemetry-ebpf-instrumentation
-    repo: https://open-telemetry.github.io/opentelemetry-helm-charts
-    version: 0.4.3
-    releaseName: opentelemetry-ebpf
-    namespace: otel-system
-    valuesFile: values-ebpf.yaml
-
 resources:
   - namespace.yaml
   - otel-collector-rbac.yaml
