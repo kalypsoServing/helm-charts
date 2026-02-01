@@ -66,6 +66,8 @@ spec:
     metadata:
       labels:
         app.kubernetes.io/name: otel-ebpf-profiler
+      annotations:
+        container.apparmor.security.beta.kubernetes.io/profiler: unconfined
     spec:
       serviceAccountName: otel-ebpf-profiler
       hostPID: true
@@ -77,6 +79,14 @@ spec:
             - "--feature-gates=service.profilesSupport"
           securityContext:
             privileged: true
+            runAsUser: 0
+            capabilities:
+              add:
+                - SYS_ADMIN
+                - SYS_PTRACE
+                - SYS_RESOURCE
+                - BPF
+                - PERFMON
           resources:
             limits:
               memory: 512Mi
@@ -96,6 +106,9 @@ spec:
             - name: cgroup
               mountPath: /sys/fs/cgroup
               readOnly: true
+            - name: kernel-security
+              mountPath: /sys/kernel/security
+              readOnly: true
       volumes:
         - name: config
           configMap:
@@ -109,5 +122,8 @@ spec:
         - name: cgroup
           hostPath:
             path: /sys/fs/cgroup
+        - name: kernel-security
+          hostPath:
+            path: /sys/kernel/security
       tolerations:
         - operator: Exists
