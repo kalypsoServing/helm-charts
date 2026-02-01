@@ -44,7 +44,7 @@ uv run uvicorn sample_fastapi.main:app --reload --host 0.0.0.0 --port 8000
 ## 이미지 빌드
 
 ```bash
-podman build -t localhost/sample-fastapi:latest .
+podman build -t sky5367/sample-fastapi:latest .
 ```
 
 Kind 클러스터 사용 시 이미지 로드:

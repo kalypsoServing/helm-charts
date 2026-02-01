@@ -43,7 +43,15 @@ datasources:
           httpMethod: GET
           tracesToLogsV2:
             datasourceUid: loki
-            tags: ['job', 'instance', 'pod', 'namespace']
+            tags:
+              - key: job
+                value: job
+              - key: instance
+                value: instance
+              - key: pod
+                value: pod
+              - key: namespace
+                value: namespace
             mappedTags: [{ key: 'service.name', value: 'service' }]
             mapTagNamesEnabled: true
             filterByTraceID: true
@@ -52,7 +60,13 @@ datasources:
             tags: [{ key: 'service.name', value: 'service' }]
           tracesToProfiles:
             datasourceUid: pyroscope
-            tags: ['service.name', 'pod', 'namespace']
+            tags:
+              - key: service.name
+                value: service.name
+              - key: pod
+                value: pod
+              - key: namespace
+                value: namespace
             profileTypeId: 'process_cpu:cpu:nanoseconds:cpu:nanoseconds'
           nodeGraph:
             enabled: true
