@@ -1,8 +1,8 @@
 # AGENTS.md - Kalypso Infrastructure Helm Charts
 
-> **Last Updated**: 2026-01-25
+> **Last Updated**: 2026-02-01
 > **Project Status**: COMPLETE (All Tasks Done)
-> **Cluster Status**: Running in Kind (kind-kind)
+> **Cluster Status**: Colima + K3s recommended (eBPF support) / Kind available (legacy)
 
 ---
 
@@ -67,22 +67,26 @@ Create a Helm chart that automatically sets up **LGTM (Loki, Grafana, Tempo, Mim
 ### Repository Structure
 ```
 kalypso-infra-helm-chart/
-├── charts/
-│   ├── kalypso-otel/        # cert-manager + OTel Operator
-│   ├── kalypso-istio/       # Istio base + istiod
-│   ├── kalypso-minio/       # MinIO with 8 buckets
-│   ├── kalypso-mimir/       # Mimir distributed metrics
-│   ├── kalypso-tempo/       # Tempo distributed tracing
-│   ├── kalypso-loki/        # Loki log aggregation
-│   ├── kalypso-pyroscope/   # Pyroscope profiling
-│   └── kalypso-grafana/     # Grafana dashboards
+├── manifests/               # Kustomize + Helm manifests per component
+│   ├── cert-manager/
+│   ├── otel/                # OTel Operator + eBPF profiler + collector
+│   ├── istio/
+│   ├── minio/
+│   ├── mimir/
+│   ├── tempo/
+│   ├── loki/
+│   ├── pyroscope/
+│   └── grafana/
 ├── argocd/
 │   ├── project.yaml         # ArgoCD AppProject
 │   └── applicationset.yaml  # ApplicationSet with sync waves
+├── scripts/
+│   ├── setup-colima.sh      # Colima + K3s cluster setup
+│   └── verify-ebpf.sh       # eBPF support verification
 ├── docker/
 │   └── ebpf-profiler/Dockerfile  # OTel eBPF profiler image
-├── values/                  # Reference values (DO NOT MODIFY)
-├── .sisyphus/               # Plans and notepads
+├── Makefile                 # Cluster/deploy/verify automation
+├── kind-config.yaml         # Kind cluster config (legacy)
 └── README.md                # Quickstart guide
 ```
 
@@ -147,7 +151,14 @@ Pyroscope: pyroscope.pyroscope.svc.cluster.local:4040
 | 14 | Deploy Kalypso charts | DONE |
 | 15 | Verify deployment and document results | DONE |
 
-**Total: 15/15 Tasks Complete (100%)**
+### Phase 5: Colima + eBPF Support (Tasks 16-17)
+
+| Task | Description | Status |
+|------|-------------|--------|
+| 16 | Colima + K3s setup scripts and Makefile | DONE |
+| 17 | eBPF verification script and documentation | DONE |
+
+**Total: 17/17 Tasks Complete (100%)**
 
 ---
 
@@ -207,12 +218,22 @@ Pyroscope: pyroscope.pyroscope.svc.cluster.local:4040
 
 ## 5. Current Deployment Status
 
-### Kind Cluster Info
+### Recommended Cluster: Colima + K3s
 ```
-Cluster Name: kalypso-test
-Runtime: podman (experimental)
-Kubernetes: v1.35.0
-Context: kind-kalypso-test
+Profile: kalypso
+VM Type: Apple Virtualization.framework (vz)
+CPU: 8 / Memory: 14GB / Disk: 40GB
+Kubernetes: K3s (single node)
+eBPF: Full support (Linux kernel 6.x)
+Setup: make cluster-colima
+```
+
+### Legacy Cluster: Kind
+```
+Cluster Name: kind
+Nodes: 1 control-plane + 2 workers
+eBPF: NOT supported (nested container limitation)
+Setup: make cluster-kind
 ```
 
 ### Pod Status (All Healthy)
@@ -273,10 +294,11 @@ d5aa668 - feat(chart): add kalypso-otel chart with cert-manager and otel-operato
 - The deprecated grafana/agent:v0.36.2 still runs
 - **Workaround**: Need to upgrade Pyroscope chart or modify chart directly
 
-### 2. eBPF Profiler Not Tested
-- Disabled because image needs to be built manually
-- ARM64 compatibility concerns on macOS
-- User requested not to debug deeply
+### 2. eBPF Profiler: Colima Required
+- **Resolved**: Colima + K3s provides full eBPF support on ARM64 Mac
+- Kind clusters cannot run eBPF profiler (nested container limitation)
+- Use `make cluster-colima` + `make verify-ebpf` to validate
+- Official image `otel/opentelemetry-collector-ebpf-profiler:0.134.1` supports multi-arch (ARM64/AMD64)
 
 ### 3. Istio Gateway Removed
 - Schema validation issues with gateway chart v1.21.0
@@ -308,13 +330,13 @@ kubectl port-forward -n grafana svc/kalypso-grafana 3000:80
 # Verify Mimir, Tempo, Loki, Pyroscope datasources work
 ```
 
-### Option C: Build eBPF Profiler
+### Option C: Test eBPF Profiler on Colima
 ```bash
-cd docker/ebpf-profiler
-# For ARM64, edit Dockerfile to use go1.22.10.linux-arm64.tar.gz
-docker build -t ebpf-profiler:latest .
-# Update charts/kalypso-pyroscope/values.yaml with image
-# Set ebpfProfiler.enabled: true
+make cluster-colima       # Create Colima + K3s cluster
+make verify-ebpf          # Verify eBPF support
+make deploy               # Deploy full stack
+# Check profiler logs:
+kubectl logs -n otel-system -l app.kubernetes.io/name=otel-ebpf-profiler --tail=50
 ```
 
 ### Option D: Fix Pyroscope Agent Issue
@@ -375,12 +397,14 @@ kubectl get secret -n grafana kalypso-grafana -o jsonpath="{.data.admin-password
 ### Key Files
 | File | Purpose |
 |------|---------|
+| `Makefile` | Cluster/deploy/verify automation |
 | `argocd/applicationset.yaml` | ArgoCD deployment config (update repoURL!) |
-| `charts/kalypso-*/values.yaml` | Chart configuration |
-| `docker/ebpf-profiler/Dockerfile` | eBPF profiler image build |
+| `manifests/*/kustomization.yaml` | Kustomize + Helm chart config per component |
+| `scripts/setup-colima.sh` | Colima + K3s cluster setup |
+| `scripts/verify-ebpf.sh` | eBPF support verification |
+| `docker/ebpf-profiler/Dockerfile` | eBPF profiler image build (fallback) |
+| `kind-config.yaml` | Kind cluster config (legacy) |
 | `README.md` | Installation guide |
-| `.sisyphus/plans/kalypso-infra-chart.md` | Original work plan |
-| `.sisyphus/notepads/kalypso-infra-chart/learnings.md` | Detailed task logs |
 
 ---
 

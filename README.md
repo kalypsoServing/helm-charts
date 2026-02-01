@@ -25,15 +25,52 @@ Multi-namespace Kubernetes observability stack with **LGTM (Loki, Grafana, Tempo
 
 ## QuickStart
 
+### Option A: Colima + K3s (추천 - eBPF 지원)
+
+ARM64 Mac에서 eBPF 프로파일링을 포함한 전체 스택 테스트에 적합합니다.
+Colima는 Apple Virtualization.framework 기반의 실제 Linux VM을 제공하므로 eBPF tracepoint에 대한 커널 레벨 접근이 가능합니다.
+
 ```bash
 git clone https://github.com/KalypsoServing/helm-charts
 cd helm-charts
 
-kind create cluster --config ./kind-config.yaml
+# 1. Colima + K3s 클러스터 생성
+make cluster-colima
 
-kubectl create namespace argocd
-kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
-kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=argocd-server -n argocd --timeout=300s
+# 2. eBPF 지원 검증
+make verify-ebpf
+
+# 3. ArgoCD 설치 (Helm, kustomize.buildOptions 포함)
+helm repo add argo https://argoproj.github.io/argo-helm
+helm upgrade -i argocd argo/argo-cd \
+  -n argocd --create-namespace \
+  -f argocd/values.yaml
+kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
+
+
+# 4. 배포
+kubectl apply -f argocd/project.yaml
+kubectl apply -f argocd/applicationset.yaml
+
+watch kubectl get pods -A
+```
+
+Prerequisites: `brew install colima kubectl helm` + `helm repo add argo https://argoproj.github.io/argo-helm`
+
+### Option B: Kind (레거시 - eBPF 미지원)
+
+Kind는 nested container 환경(Host -> Docker -> Kind Node -> Pod)이므로 eBPF tracepoint 접근이 제한됩니다. eBPF 프로파일링이 필요 없는 경우에만 사용하세요.
+
+```bash
+git clone https://github.com/KalypsoServing/helm-charts
+cd helm-charts
+
+make cluster-kind
+
+helm upgrade -i argocd argo/argo-cd \
+  -n argocd --create-namespace \
+  -f argocd/values.yaml \
+  --wait
 
 kubectl apply -f argocd/project.yaml
 kubectl apply -f argocd/applicationset.yaml
@@ -49,14 +86,17 @@ ArgoCD will automatically deploy in order:
 5. **kalypso-pyroscope** → Continuous profiling
 6. **kalypso-grafana** → Dashboards
 
-### Access Grafana
+### Access UIs
 
 ```bash
-kubectl port-forward -n grafana svc/grafana 3000:80
-# URL: http://localhost:3000
-# User: admin
-# Pass: kubectl get secret -n grafana grafana -o jsonpath="{.data.admin-password}" | base64 -d
+make port-forward-grafana   # Grafana  → http://localhost:3000
+make port-forward-minio     # MinIO    → http://localhost:9001
+make port-forward-argocd    # ArgoCD   → http://localhost:8080
 ```
+
+Grafana credentials:
+- User: `admin`
+- Pass: `kubectl get secret -n grafana grafana -o jsonpath="{.data.admin-password}" | base64 -d`
 
 ## Architecture
 
@@ -133,7 +173,24 @@ All components communicate via Kubernetes DNS FQDN:
 
 - Kubernetes cluster (1.25+)
 - ArgoCD installed with Kustomize Helm support enabled
-- Linux nodes with kernel 4.9+ (for eBPF profiling)
+- Linux nodes with kernel 5.x+ (for eBPF profiling)
+
+### ARM64 Mac (Apple Silicon)
+
+| 방식 | eBPF 지원 | 설치 |
+|------|----------|------|
+| **Colima + K3s** (추천) | Full | `brew install colima kubectl helm` |
+| Kind | 미지원 | `brew install kind kubectl helm` |
+
+```bash
+# Colima 방식 (추천)
+brew install colima kubectl helm
+
+# Kind 방식 (레거시)
+brew install kind kubectl helm
+```
+
+Colima는 `--vm-type vz`로 Apple Virtualization.framework 기반 VM을 생성하여 실제 Linux 커널 6.x에서 eBPF를 실행합니다.
 
 ### Enable Kustomize Helm Support in ArgoCD
 
@@ -251,13 +308,28 @@ kubectl kustomize manifests/otel --enable-helm
 
 ## Development
 
+### Makefile Targets
+
+```bash
+make help                   # 사용 가능한 모든 타겟 표시
+make cluster-colima         # Colima + K3s 클러스터 생성
+make cluster-colima-delete  # Colima 클러스터 삭제
+make cluster-kind           # Kind 클러스터 생성 (레거시)
+make cluster-kind-delete    # Kind 클러스터 삭제
+make deploy                 # ArgoCD 기반 전체 배포
+make deploy-manual          # Kustomize 직접 배포 (ArgoCD 없이)
+make verify                 # 전체 pod 상태 확인
+make verify-ebpf            # eBPF 지원 검증
+make port-forward-grafana   # Grafana 포트포워드 (:3000)
+make port-forward-minio     # MinIO 콘솔 포트포워드 (:9001)
+make port-forward-argocd    # ArgoCD UI 포트포워드 (:8080)
+make lint                   # Kustomize 매니페스트 검증
+```
+
 ### Validate Kustomization
 
 ```bash
-for manifest in manifests/*; do
-  echo "Validating $manifest..."
-  kubectl kustomize $manifest --enable-helm > /dev/null && echo "OK" || echo "FAILED"
-done
+make lint
 ```
 
 ### Test Single Component
