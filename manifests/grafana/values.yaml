@@ -36,7 +36,7 @@ datasources:
       - name: Tempo
         type: tempo
         uid: tempo
-        url: http://tempo-gateway.tempo.svc.cluster.local:3100
+        url: http://tempo-gateway.tempo.svc.cluster.local:80
         access: proxy
         editable: true
         jsonData:
@@ -73,6 +73,6 @@ datasources:
       - name: Pyroscope
         type: grafana-pyroscope-datasource
         uid: pyroscope
-        url: http://pyroscope.pyroscope.svc.cluster.local:4040
+        url: http://pyroscope-query-frontend.pyroscope.svc.cluster.local:4040
         access: proxy
         editable: true
