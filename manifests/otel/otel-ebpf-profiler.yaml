@@ -29,6 +29,34 @@ roleRef:
   name: otel-ebpf-profiler
   apiGroup: rbac.authorization.k8s.io
 ---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: otel-ebpf-profiler-config
+  namespace: otel-system
+data:
+  config.yaml: |
+    receivers:
+      ebpf_profiler:
+        verbose: true
+
+    processors:
+      batch:
+        timeout: 10s
+
+    exporters:
+      otlp:
+        endpoint: pyroscope-distributor.pyroscope.svc.cluster.local:4040
+        tls:
+          insecure: true
+
+    service:
+      pipelines:
+        profiles:
+          receivers: [ebpf_profiler]
+          processors: [batch]
+          exporters: [otlp]
+---
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
@@ -51,11 +79,8 @@ spec:
         - name: profiler
           image: otel/opentelemetry-collector-ebpf-profiler:0.134.1
           args:
-            - "-collection-agent"
-            - "kalypso-otel-collector.otel-system.svc.cluster.local:4317"
-            - "-disable-tls"
-            - "-no-kernel-version-check"
-            - "-v"
+            - "--config=/etc/otel/config.yaml"
+            - "--feature-gates=service.profilesSupport"
           securityContext:
             privileged: true
           resources:
@@ -65,6 +90,9 @@ spec:
               cpu: 100m
               memory: 128Mi
           volumeMounts:
+            - name: config
+              mountPath: /etc/otel
+              readOnly: true
             - name: kernel-debug
               mountPath: /sys/kernel/debug
               readOnly: true
@@ -75,6 +103,9 @@ spec:
               mountPath: /sys/fs/cgroup
               readOnly: true
       volumes:
+        - name: config
+          configMap:
+            name: otel-ebpf-profiler-config
         - name: kernel-debug
           hostPath:
             path: /sys/kernel/debug
