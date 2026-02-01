@@ -39,10 +39,6 @@ data:
     receivers:
       profiling:
 
-    processors:
-      batch:
-        timeout: 10s
-
     exporters:
       otlp:
         endpoint: pyroscope-distributor.pyroscope.svc.cluster.local:4040
@@ -53,7 +49,6 @@ data:
       pipelines:
         profiles:
           receivers: [profiling]
-          processors: [batch]
           exporters: [otlp]
 ---
 apiVersion: apps/v1
