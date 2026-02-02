@@ -112,7 +112,7 @@ alloy:
     enabled: true
 
   extraPorts:
-    - name: pyroscope-receive
+    - name: pyroscope-rx
       port: 4040
       targetPort: 4040
       protocol: TCP
