@@ -57,18 +57,13 @@ alloy:
           action        = "keep"
         }
 
-        // 스크래핑 포트 설정
-        rule {
-          source_labels = ["__meta_kubernetes_pod_annotation_profiles_grafana_com_cpu_port"]
-          regex         = "(\\d+)"
-          target_label  = "__address__"
-          replacement   = "${1}"
-          action        = "replace"
-        }
+        // port annotation이 명시된 경우에만 __address__ 재설정
+        // 없으면 kubernetes discovery 기본값(pod_ip:container_port) 유지
         rule {
           source_labels = ["__meta_kubernetes_pod_ip", "__meta_kubernetes_pod_annotation_profiles_grafana_com_cpu_port"]
-          separator     = ":"
+          regex         = "(.+);(\\d+)"
           target_label  = "__address__"
+          replacement   = "${1}:${2}"
           action        = "replace"
         }
 
