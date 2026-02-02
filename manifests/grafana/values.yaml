@@ -63,11 +63,11 @@ datasources:
             tags:
               - key: service.name
                 value: service_name
-              - key: pod
-                value: pod
-              - key: namespace
-                value: namespace
+              - key: http.route
+                value: http_route
             profileTypeId: 'process_cpu:cpu:nanoseconds:cpu:nanoseconds'
+            customQuery: true
+            query: '{service_name="$${__span.tags["service.name"]}", http_route="$${__span.tags["http.route"]}"}'
           nodeGraph:
             enabled: true
           serviceMap:

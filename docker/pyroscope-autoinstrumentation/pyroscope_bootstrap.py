@@ -67,6 +67,8 @@ if _PYROSCOPE_SERVER:
         FastAPI.__init__ = _patched_init
         logger.info("FastAPI.__init__ patched for Pyroscope injection")
 
+    _EXCLUDED_ROUTES = frozenset({"/health", "/docs", "/swagger", "/metrics", "/openapi.json", "/redoc", "/favicon.ico"})
+
     def _inject_middleware(app):
         """Add Pyroscope tag middleware to the app."""
         from starlette.requests import Request
@@ -79,6 +81,10 @@ if _PYROSCOPE_SERVER:
                 if match == Match.FULL:
                     http_route = getattr(route, "path", http_route)
                     break
+
+            if http_route in _EXCLUDED_ROUTES:
+                return await call_next(request)
+
             with pyroscope.tag_wrapper({"http_route": http_route, "http_method": request.method}):
                 response = await call_next(request)
             return response

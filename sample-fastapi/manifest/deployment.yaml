@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
         - name: sample-fastapi
-          image: sky5367/sample-fastapi:v0.0.12
+          image: sky5367/sample-fastapi:v0.0.13
           imagePullPolicy: Always
           ports:
             - containerPort: 8000
@@ -33,7 +33,7 @@ spec:
               value: "/app/src"
           resources:
             limits:
-              memory: 256Mi
+              memory: 128Mi
             requests:
               cpu: 100m
               memory: 128Mi
