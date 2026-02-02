@@ -137,8 +137,8 @@ spec:
           insecure: true
         resource_to_telemetry_conversion:
           enabled: true
-      loki:
-        endpoint: http://loki-gateway.loki.svc.cluster.local:80/loki/api/v1/push
+      otlphttp/loki:
+        endpoint: http://loki-gateway.loki.svc.cluster.local:80/otlp
     service:
       pipelines:
         traces:
@@ -152,4 +152,4 @@ spec:
         logs:
           receivers: [filelog]
           processors: [memory_limiter, k8sattributes/logs, resource/loki, batch]
-          exporters: [loki]
+          exporters: [otlphttp/loki]
