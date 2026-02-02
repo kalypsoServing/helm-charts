@@ -5,6 +5,7 @@ metadata:
   namespace: otel-system
 spec:
   mode: daemonset
+  image: otel/opentelemetry-collector-contrib:0.144.0
   serviceAccount: kalypso-otel-collector
   env:
     - name: KUBE_NODE_NAME
@@ -137,8 +138,8 @@ spec:
           insecure: true
         resource_to_telemetry_conversion:
           enabled: true
-      otlphttp/loki:
-        endpoint: http://loki-gateway.loki.svc.cluster.local:80/otlp
+      loki:
+        endpoint: http://loki-gateway.loki.svc.cluster.local:80/loki/api/v1/push
     service:
       pipelines:
         traces:
@@ -152,4 +153,4 @@ spec:
         logs:
           receivers: [filelog]
           processors: [memory_limiter, k8sattributes/logs, resource/loki, batch]
-          exporters: [otlphttp/loki]
+          exporters: [loki]
