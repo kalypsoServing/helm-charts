@@ -14,6 +14,8 @@ loki:
     bucketNames:
       chunks: loki-bucket
       ruler: loki-bucket
+  limits_config:
+    volume_enabled: true
   schemaConfig:
     configs:
       - from: 2024-01-01
