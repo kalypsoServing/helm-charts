@@ -44,17 +44,16 @@ datasources:
           tracesToLogsV2:
             datasourceUid: loki
             tags:
-              - key: job
-                value: job
-              - key: instance
-                value: instance
-              - key: pod
-                value: pod
-              - key: namespace
-                value: namespace
-            mappedTags: [{ key: 'service.name', value: 'service' }]
+              - key: k8s.pod.name
+                value: k8s_pod_name
+              - key: k8s.namespace.name
+                value: k8s_namespace_name
+              - key: k8s.container.name
+                value: k8s_container_name
             mapTagNamesEnabled: true
-            filterByTraceID: true
+            filterByTraceID: false
+            spanStartTimeShift: '-5m'
+            spanEndTimeShift: '5m'
           tracesToMetrics:
             datasourceUid: mimir
             tags: [{ key: 'service.name', value: 'service' }]

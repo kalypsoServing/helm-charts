@@ -4,9 +4,24 @@ metadata:
   name: kalypso-otel
   namespace: otel-system
 spec:
-  mode: deployment
-  replicas: 1
+  mode: daemonset
   serviceAccount: kalypso-otel-collector
+  env:
+    - name: KUBE_NODE_NAME
+      valueFrom:
+        fieldRef:
+          fieldPath: spec.nodeName
+  volumeMounts:
+    - name: varlogpods
+      mountPath: /var/log/pods
+      readOnly: true
+  volumes:
+    - name: varlogpods
+      hostPath:
+        path: /var/log/pods
+        type: Directory
+  tolerations:
+    - operator: Exists
   config:
     receivers:
       otlp:
@@ -15,6 +30,55 @@ spec:
             endpoint: 0.0.0.0:4317
           http:
             endpoint: 0.0.0.0:4318
+      filelog:
+        include:
+          - /var/log/pods/*/*/*.log
+        exclude:
+          - /var/log/pods/otel-system_kalypso-otel*/*/*.log
+        start_at: end
+        include_file_path: true
+        include_file_name: false
+        operators:
+          - type: router
+            id: get-format
+            routes:
+              - output: parser-containerd
+                expr: 'body matches "^[^ Z]+Z"'
+              - output: parser-cri
+                expr: 'body matches "^[^ Z]+ "'
+          - type: regex_parser
+            id: parser-containerd
+            regex: '^(?P<time>[^ Z]+Z) (?P<stream>stdout|stderr) (?P<logtag>[^ ]*) ?(?P<log>.*)$'
+            output: extract-metadata-from-filepath
+            timestamp:
+              parse_from: attributes.time
+              layout: '%Y-%m-%dT%H:%M:%S.%LZ'
+          - type: regex_parser
+            id: parser-cri
+            regex: '^(?P<time>[^ ]+) (?P<stream>stdout|stderr) (?P<logtag>[^ ]*) ?(?P<log>.*)$'
+            output: extract-metadata-from-filepath
+            timestamp:
+              parse_from: attributes.time
+              layout: '%Y-%m-%dT%H:%M:%S.%LZ'
+          - type: regex_parser
+            id: extract-metadata-from-filepath
+            regex: '^.*\/(?P<namespace>[^_]+)_(?P<pod_name>[^_]+)_(?P<uid>[a-f0-9\-]+)\/(?P<container_name>[^\._]+)\/(?P<restart_count>\d+)\.log$'
+            parse_from: attributes["log.file.path"]
+            cache:
+              size: 128
+          - type: move
+            from: attributes.log
+            to: body
+          - type: move
+            from: attributes.stream
+            to: attributes["log.iostream"]
+          - type: recombine
+            id: multiline
+            combine_field: body
+            source_identifier: attributes["log.file.path"]
+            is_first_entry: 'body matches "^[^\\s]"'
+            max_log_size: 65536
+            combine_with: "\n"
     processors:
       batch:
         timeout: 5s
@@ -29,6 +93,25 @@ spec:
             - k8s.namespace.name
             - k8s.pod.name
             - k8s.deployment.name
+      k8sattributes/logs:
+        auth_type: "serviceAccount"
+        passthrough: false
+        filter:
+          node_from_env_var: KUBE_NODE_NAME
+        extract:
+          metadata:
+            - k8s.namespace.name
+            - k8s.pod.name
+            - k8s.pod.uid
+            - k8s.deployment.name
+            - k8s.node.name
+            - k8s.container.name
+        pod_association:
+          - sources:
+              - from: resource_attribute
+                name: k8s.namespace.name
+              - from: resource_attribute
+                name: k8s.pod.name
       filter/exclude-infra:
         error_mode: ignore
         traces:
@@ -38,6 +121,11 @@ spec:
         metrics:
           datapoint:
             - 'attributes["http.route"] != nil and IsMatch(attributes["http.route"], "^/(health|docs|swagger|metrics)")'
+      resource/loki:
+        attributes:
+          - action: insert
+            key: loki.resource.labels
+            value: k8s.namespace.name, k8s.pod.name, k8s.container.name, k8s.deployment.name
     exporters:
       otlp/tempo:
         endpoint: tempo-distributor.tempo.svc.cluster.local:4317
@@ -49,6 +137,8 @@ spec:
           insecure: true
         resource_to_telemetry_conversion:
           enabled: true
+      loki:
+        endpoint: http://loki-gateway.loki.svc.cluster.local:80/loki/api/v1/push
     service:
       pipelines:
         traces:
@@ -59,3 +149,7 @@ spec:
           receivers: [otlp]
           processors: [memory_limiter, k8sattributes, filter/exclude-infra, batch]
           exporters: [prometheusremotewrite]
+        logs:
+          receivers: [filelog]
+          processors: [memory_limiter, k8sattributes/logs, resource/loki, batch]
+          exporters: [loki]
