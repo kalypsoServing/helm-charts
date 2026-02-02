@@ -1,0 +1,132 @@
+# Grafana Alloy - 프로파일링 전용 수집기
+# Pyroscope SDK push 수신 + annotation 기반 pprof 스크래핑
+
+alloy:
+  configMap:
+    create: true
+    content: |-
+      // =============================================
+      // Logging
+      // =============================================
+      logging {
+        level  = "info"
+        format = "logfmt"
+      }
+
+      livedebugging {
+        enabled = true
+      }
+
+      // =============================================
+      // Pyroscope Write — Pyroscope Distributor로 전달
+      // =============================================
+      pyroscope.write "default" {
+        endpoint {
+          url = "http://pyroscope-distributor.pyroscope.svc.cluster.local:4040"
+        }
+      }
+
+      // =============================================
+      // Pyroscope Receive HTTP — SDK push 수신 (port 4040)
+      // =============================================
+      pyroscope.receive_http "default" {
+        http {
+          listen_address = "0.0.0.0"
+          listen_port    = 4040
+        }
+        forward_to = [pyroscope.write.default.receiver]
+      }
+
+      // =============================================
+      // Kubernetes Discovery — 크로스 네임스페이스 Pod 디스커버리
+      // =============================================
+      discovery.kubernetes "pods" {
+        role = "pod"
+      }
+
+      // =============================================
+      // Discovery Relabel — annotation 기반 필터링
+      // =============================================
+      discovery.relabel "annotated_pods" {
+        targets = discovery.kubernetes.pods.targets
+
+        // profiles.grafana.com/cpu.scrape == "true" 인 Pod만 유지
+        rule {
+          source_labels = ["__meta_kubernetes_pod_annotation_profiles_grafana_com_cpu_scrape"]
+          regex         = "true"
+          action        = "keep"
+        }
+
+        // 스크래핑 포트 설정
+        rule {
+          source_labels = ["__meta_kubernetes_pod_annotation_profiles_grafana_com_cpu_port"]
+          regex         = "(\\d+)"
+          target_label  = "__address__"
+          replacement   = "${1}"
+          action        = "replace"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_pod_ip", "__meta_kubernetes_pod_annotation_profiles_grafana_com_cpu_port"]
+          separator     = ":"
+          target_label  = "__address__"
+          action        = "replace"
+        }
+
+        // service_name 라벨 설정
+        rule {
+          source_labels = ["__meta_kubernetes_namespace", "__meta_kubernetes_pod_label_app"]
+          separator     = "/"
+          target_label  = "service_name"
+          action        = "replace"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_namespace"]
+          target_label  = "namespace"
+          action        = "replace"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_pod_name"]
+          target_label  = "pod"
+          action        = "replace"
+        }
+      }
+
+      // =============================================
+      // Pyroscope Scrape — annotation 기반 pprof 스크래핑
+      // =============================================
+      pyroscope.scrape "annotated_pods" {
+        targets    = discovery.relabel.annotated_pods.output
+        forward_to = [pyroscope.write.default.receiver]
+
+        profiling_config {
+          profile.process_cpu {
+            enabled = true
+          }
+          profile.memory {
+            enabled = true
+          }
+        }
+      }
+
+  clustering:
+    enabled: true
+
+  extraPorts:
+    - name: pyroscope-receive
+      port: 4040
+      targetPort: 4040
+      protocol: TCP
+
+# Controller 설정 — Deployment 모드, 2 replicas
+controller:
+  type: deployment
+  replicas: 2
+
+# RBAC — alloy-rbac.yaml에서 직접 관리 (크로스 네임스페이스 디스커버리)
+rbac:
+  create: false
+
+# ServiceAccount — Helm chart가 생성 (ClusterRoleBinding에서 참조)
+serviceAccount:
+  create: true
+  name: alloy
