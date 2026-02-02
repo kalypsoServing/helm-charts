@@ -57,6 +57,15 @@ alloy:
           action        = "keep"
         }
 
+        // 내부 통신용 포트 제외 (memberlist, gossip, grpc 등)
+        // K8s discovery는 Pod의 모든 컨테이너 포트별로 target을 생성하므로
+        // pprof를 노출하지 않는 포트는 drop
+        rule {
+          source_labels = ["__meta_kubernetes_pod_container_port_name"]
+          regex         = "memberlist|gossip|grpc.*"
+          action        = "drop"
+        }
+
         // port annotation이 명시된 경우에만 __address__ 재설정
         // 없으면 kubernetes discovery 기본값(pod_ip:container_port) 유지
         rule {
