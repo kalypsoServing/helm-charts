@@ -38,6 +38,8 @@ spec:
         endpoint: http://mimir-gateway.mimir.svc.cluster.local:80/api/v1/push
         tls:
           insecure: true
+        resource_to_telemetry_conversion:
+          enabled: true
     service:
       pipelines:
         traces:

@@ -31,7 +31,29 @@ querier:
 queryFrontend:
   replicas: 1
 metricsGenerator:
-  enabled: false
+  enabled: true
+  replicas: 1
+  config:
+    registry:
+      external_labels:
+        source: tempo
+    storage:
+      path: /var/tempo/wal
+      remote_write:
+        - url: http://mimir-gateway.mimir.svc.cluster.local:80/api/v1/push
+          send_exemplars: true
+    processor:
+      service_graphs:
+        dimensions:
+          - service.name
+          - http.method
+          - http.route
+      span_metrics:
+        dimensions:
+          - service.name
+          - http.method
+          - http.route
+          - http.status_code
 traces:
   otlp:
     http:
