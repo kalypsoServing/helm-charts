@@ -13,6 +13,7 @@ spec:
     type: parentbased_traceidratio
     argument: "1"
   python:
+    image: sky5367/otel-autoinstrumentation-python-pyroscope:0.60b0-pyroscope2
     env:
       - name: PYROSCOPE_SERVER_ADDRESS
         value: "http://pyroscope-distributor.pyroscope.svc.cluster.local:4040"
